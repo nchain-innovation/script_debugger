@@ -1,0 +1,15 @@
+coincurve 
+toml 
+requests 
+antlr4-python3-runtime
+blessings 
+fastapi
+uvicorn[standard]
+docker
+bitsv
+docker-compose
+python-multipart
+flake8
+pytest
+python-bitcoinrpc
+tx_engine
