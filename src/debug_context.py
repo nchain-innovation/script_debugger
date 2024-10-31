@@ -23,17 +23,13 @@ class DebuggingContext:
     def get_stack(self):
         """ Return the main stack
         """
-        return self.sf.context.get_stack()[:]
+        return self.sf.context.get_stack()
 
-    def get_raw_stack(self):
-        """ Return the stack without the values converted to human readable form
-        """
-        return self.sf.context.raw_stack[:]
 
     def get_altstack(self):
         """ Return the alt stack
         """
-        return self.sf.context.get_altstack()[:]
+        return self.sf.context.get_altstack()
 
     @property
     def breakpoints(self) -> Breakpoints:
@@ -113,7 +109,7 @@ class DebuggingContext:
             print(e)
             return
 
-        self.sf.context.set_commands(script.get_commands())
+        self.sf.context.set_commands(script)
         if not self.sf.context.evaluate_core():
             print("Operation failed")
 
@@ -130,7 +126,8 @@ class DebuggingContext:
     def list(self) -> None:
         """ List the commands
         """
-        self.sf.script_state.list()
+        #self.sf.script_state.list()
+        self.sf.script_state.list_new()
 
     def load_script_file(self, fname) -> None:
         """ Load script file from fname

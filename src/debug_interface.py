@@ -9,7 +9,6 @@ except ModuleNotFoundError:
     pass
 
 from typing import List
-# sys.path.append("..")
 
 from debug_context import DebuggingContext
 from util import has_extension
@@ -246,7 +245,7 @@ class DebuggerInterface:
         """ Main print-read-eval loop of debugger.
         """
         while True:
-            self.print_status()
+            #self.print_status()
             user_input = input("(gdb) ")
             split_input: List[str] = user_input.strip().split()
             if len(split_input) == 0:

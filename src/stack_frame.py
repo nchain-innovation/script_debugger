@@ -28,7 +28,7 @@ class StackFrame:
     def reset_core(self) -> None:
         """ Reset the script ready to run - ignore the stack frame
         """
-        self.context.set_commands(self.script_state.get_commands())
+        self.context.set_commands(self.script_state)
         self.ip = 0
 
     def reset_stacks(self) -> None:

@@ -6,7 +6,7 @@ import sys
 sys.path.append("../src")
 
 from debug_interface import DebuggerInterface
-
+from tx_engine import Stack
 
 EXAMPLE_ADD = "../examples/add.bs"
 EXAMPLE_SWAP = "../examples/swap.bs"
@@ -35,7 +35,7 @@ class DebuggerTests(unittest.TestCase):
 
         self.dbif.process_input(["run"])
         self.assertIsNotNone(self.dbif.db_context.ip)
-        self.assertEqual(self.dbif.db_context.get_stack(), [3])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3]]))
 
     def test_step(self):
         self.dbif.process_input(["file", EXAMPLE_ADD])
@@ -43,17 +43,17 @@ class DebuggerTests(unittest.TestCase):
 
         self.dbif.process_input(["s"])
         self.assertIsNotNone(self.dbif.db_context.ip)
-        self.assertEqual(self.dbif.db_context.get_stack(), [1])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1]]))
         self.assertEqual(self.dbif.db_context.ip, 1)
 
         self.dbif.process_input(["step"])
         self.assertIsNotNone(self.dbif.db_context.ip)
-        self.assertEqual(self.dbif.db_context.get_stack(), [1, 2])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1], [2]]))
         self.assertEqual(self.dbif.db_context.ip, 2)
 
         self.dbif.process_input(["step"])
         self.assertIsNotNone(self.dbif.db_context.ip)
-        self.assertEqual(self.dbif.db_context.get_stack(), [3])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3]]))
         self.assertEqual(self.dbif.db_context.ip, 3)
 
     def test_step_and_reset(self):
@@ -61,11 +61,11 @@ class DebuggerTests(unittest.TestCase):
         self.assertIsNone(self.dbif.db_context.ip)
 
         self.dbif.process_input(["s"])
-        self.assertEqual(self.dbif.db_context.get_stack(), [1])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1]]))
         self.assertEqual(self.dbif.db_context.ip, 1)
 
         self.dbif.process_input(["step"])
-        self.assertEqual(self.dbif.db_context.get_stack(), [1, 2])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1], [2]]))
         self.assertEqual(self.dbif.db_context.ip, 2)
 
         self.dbif.process_input(["reset"])
@@ -73,11 +73,11 @@ class DebuggerTests(unittest.TestCase):
 
         self.dbif.process_input(["step"])
         self.assertIsNotNone(self.dbif.db_context.ip)
-        self.assertEqual(self.dbif.db_context.get_stack(), [1])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1]]))
         self.assertEqual(self.dbif.db_context.ip, 1)
 
         self.dbif.process_input(["step"])
-        self.assertEqual(self.dbif.db_context.get_stack(), [1, 2])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1], [2]]))
         self.assertEqual(self.dbif.db_context.ip, 2)
 
     def test_step_and_run(self):
@@ -85,11 +85,11 @@ class DebuggerTests(unittest.TestCase):
         self.assertIsNone(self.dbif.db_context.ip)
 
         self.dbif.process_input(["s"])
-        self.assertEqual(self.dbif.db_context.get_stack(), [1])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1]]))
         self.assertEqual(self.dbif.db_context.ip, 1)
 
         self.dbif.process_input(["run"])
-        self.assertEqual(self.dbif.db_context.get_stack(), [3])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3]]))
         self.assertEqual(self.dbif.db_context.ip, 0)
 
     def test_file_load_twice(self):
@@ -98,7 +98,7 @@ class DebuggerTests(unittest.TestCase):
 
         self.dbif.process_input(["run"])
         self.assertIsNotNone(self.dbif.db_context.ip)
-        self.assertEqual(self.dbif.db_context.get_stack(), [3])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3]]))
         self.assertEqual(self.dbif.db_context.ip, 0)
 
         self.dbif.process_input(["file", EXAMPLE_SWAP])
@@ -106,11 +106,11 @@ class DebuggerTests(unittest.TestCase):
 
         self.dbif.process_input(["run"])
         self.assertEqual(self.dbif.db_context.ip, 0)
-        self.assertEqual(self.dbif.db_context.get_stack(), [1, 3, 2])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1],[3],[2]]))
 
         self.dbif.process_input(["step"])
         self.assertEqual(self.dbif.db_context.ip, 1)
-        self.assertEqual(self.dbif.db_context.get_stack(), [1])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1]]))
 
     def test_breakpoint(self):
         self.dbif.process_input(["file", EXAMPLE_SWAP])
@@ -119,44 +119,45 @@ class DebuggerTests(unittest.TestCase):
 
         self.dbif.process_input(["run"])
         self.assertEqual(self.dbif.db_context.ip, 2)
-        self.assertEqual(self.dbif.db_context.get_stack(), [1, 2])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1],[2]]))
 
         # Restarts from the begining
         self.dbif.process_input(["run"])
         self.assertEqual(self.dbif.db_context.ip, 2)
-        self.assertEqual(self.dbif.db_context.get_stack(), [1, 2])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1], [2]]))
 
         # Continues from current position
         self.dbif.process_input(["c"])
         self.assertEqual(self.dbif.db_context.ip, 0)
-        self.assertEqual(self.dbif.db_context.get_stack(), [1, 3, 2])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1], [3], [2]]))
 
     def test_interpreter(self):
         self.dbif.process_input(["i", "1", "2", "OP_ADD"])
-        self.assertEqual(self.dbif.db_context.get_stack(), [3])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3]]))
 
     def test_push_data(self):
         self.dbif.process_input(["file", EXAMPLE_PUSHDATA])
         self.dbif.process_input(["run"])
         #print(self.dbif.db_context.get_stack())
-        self.assertEqual(self.dbif.db_context.get_stack(), [])
-    
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([]))
+
     def test_integer_addition(self):
         self.dbif.process_input(["file", EXAMPLE_INTEGERS])
         self.dbif.process_input(["run"])
         #print(self.dbif.db_context.get_stack())
-        self.assertEqual(self.dbif.db_context.get_stack(), [])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([]))
 
     def test_large_integer_addition(self):
         self.dbif.process_input(["file", EXAMPLE_LARGE_INTEGERS])
         self.dbif.process_input(["run"])
         #print(self.dbif.db_context.get_stack())
-        self.assertEqual(self.dbif.db_context.get_stack(), [])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([]))
 
     def test_push_and_integer_addition(self):
         self.dbif.process_input(["file", EXAMPLE_PUSH_DATA_INTEGER_ADD])
         self.dbif.process_input(["run"])
-        self.assertEqual(self.dbif.db_context.get_stack(),[])
+        self.assertEqual(self.dbif.db_context.get_stack(),Stack([]))
+
 
 if __name__ == "__main__":
     unittest.main()
