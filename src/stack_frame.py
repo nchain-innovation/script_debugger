@@ -18,7 +18,10 @@ class StackFrame:
         self.script_state: ScriptState = ScriptState()
         self.context = Context()
         self.breakpoints: Breakpoints = Breakpoints()
-        self.ip: Optional[int] = None
+
+        # instruction_count -> means the number of instructions executed
+        self.instruction_count: Optional[int] = None
+        
 
     def __repr__(self) -> str:
         if self.name == "main":
@@ -26,10 +29,14 @@ class StackFrame:
         return f"(FNCALL='{self.name}')"
 
     def reset_core(self) -> None:
-        """ Reset the script ready to run - ignore the stack frame
+        """ Reset the script ready to run - ignore the stack frame - script_state.const_script doesn't change
         """
-        self.context.set_commands(self.script_state)
-        self.ip = 0
+        self.context.set_commands(self.script_state.script)
+        self.instruction_count = 0
+       
+
+        # set the script for the next 
+        # self.context.set_commands(self.script_state.script_after_debug_step)
 
     def reset_stacks(self) -> None:
         """ Reset the associated stacks
@@ -38,9 +45,11 @@ class StackFrame:
 
     def can_run(self) -> bool:
         """ Return true if script has not finished
-        """
+            To determine finised, the instruction_count is compared with the 
+            number of entries in ScriptState.instruction_offset
+        """ 
         assert isinstance(self.ip, int)
-        return self.ip < len(self.context.cmds)
+        return self.instruction_count < len(self.script_state.instruction_offset)
 
     def get_cmd(self) -> Command:
         """ Return the current command

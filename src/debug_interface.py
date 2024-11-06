@@ -120,10 +120,11 @@ class DebuggerInterface:
             return
 
         if self.db_context.is_not_runable():
+            print('db_interface.step Reseting script')
             self.db_context.reset()
 
         if self.db_context.can_run():
-            self.db_context.step()
+            self.db_context.step() # this returns true/false .. if true then set the script for the next step
         else:
             print('At end of script, use "reset" to run again.')
 

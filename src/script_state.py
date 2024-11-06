@@ -2,7 +2,7 @@
 """
 import logging
 from typing import List, Union
-from tx_engine import Script
+from tx_engine import Script,  opcode_index
 from tx_engine.engine.op_code_names import OP_CODE_NAMES
 from util import has_extension
 
@@ -61,11 +61,14 @@ def format_cmds(script_str: str) -> str:
 
 class ScriptState():
     """ This holds the interpreted script, provides load and list methods.
+        This class has been extended to include the full script & the script after each debug stage 
     """
     def __init__(self):
         """ Setup the script state
         """
-        self.script = None # this is tx_engine Script type
+        self.script = None # this is loaded from the file & remains unchanged
+        # instruction location
+        self.instruction_offset: List[int] = []
 
     def load_file(self, filename: str) -> None:
         """ Load loaded file, but don't parse it
@@ -82,15 +85,6 @@ class ScriptState():
                 # self.parse_script(contents)
                 self.parse_script_new(contents)
 
-    def parse_script(self, contents: List[str]) -> None:
-        """ Parse provided contents
-        """
-        if contents:
-            # parse contents
-            line: str = " ".join(contents)
-            print(f'{line}')
-            self.script = Script.parse_string(line)
-
     def parse_script_new(self, contents: List[str]) -> None:
         """ Parse provided contents
         """
@@ -103,18 +97,10 @@ class ScriptState():
                 tmp_script = Script.parse_string(line)
                 self.script += tmp_script
 
-    def list(self) -> None:
-        """ Prints out script
-        """
-        if self.script:
-            cmds = self.script.get_commands()
-            indent = 0
-            for i, cmd in enumerate(cmds):
-                indent = print_cmd(i, cmd, indent)
-        else:
-            print("No file loaded.")
+        # set up the instruction offsets
+        self.instruction_offset =  opcode_index(self.script)
 
-    def list_new(self) -> None:
+    def list_full(self) -> None:
         if self.script:
             script_str: str = self.script.to_string()
             print(format_cmds(script_str))

@@ -41,7 +41,13 @@ class DebuggingContext:
     def ip(self) -> Optional[int]:
         """ Returns the current Instruction Pointer
         """
-        return self.sf.ip
+        return self.sf.script_state.instruction_offset[self.sf.instruction_count]
+    
+    @property
+    def instruction_count(self) -> Optional[int]:
+        """ Returns the current Instruction count
+        """
+        return self.sf.instruction_count
 
     def step(self) -> bool:
         """ Step over the next instruction
@@ -51,11 +57,21 @@ class DebuggingContext:
             self.sf.print_cmd()
 
         # Next instruction
-        assert isinstance(self.sf.ip, int)
-        self.sf.ip += 1
+        assert isinstance(self.sf.instruction_count, int)
+        self.sf.context.ip_start = self.sf.script_state.instruction_offset[self.sf.instruction_count]
+        self.sf.instruction_count += 1
+        # ip_limit -> This is how far (in bytes to step)
+        print(f'debug_context.step -> instruction count -> {self.sf.instruction_count}')
+        print(f'debug_context.step -> instruction offset -> {self.sf.script_state.instruction_offset}')
 
-        self.sf.context.ip_limit = self.sf.ip
-        return self.sf.context.evaluate_core()
+        # to handle the last element
+        if self.sf.instruction_count == len(self.sf.script_state.instruction_offset):
+            self.sf.context.ip_limit = None
+        else:
+            self.sf.context.ip_limit = self.sf.script_state.instruction_offset[self.sf.instruction_count]
+        exec_step: bool = self.sf.context.evaluate_core()
+        print(f'Value in db_context.step of sf.context.ip_limit {self.sf.context.ip_limit}')
+        return exec_step
 
     def reset(self) -> None:
         """ Reset the script ready to run - interface to Debugger
@@ -69,6 +85,8 @@ class DebuggingContext:
         """ Return true if script has not finished
         """
         return self.sf.can_run()
+    
+    0x05000000
 
     def get_next_breakpoint(self) -> None | int:
         """ Based on the current ip determine the next breakpoint
@@ -121,13 +139,12 @@ class DebuggingContext:
     def is_not_runable(self) -> bool:
         """ Return True if script is not runable
         """
-        return self.sf.ip is None
+        return self.sf.instruction_count is None
 
     def list(self) -> None:
         """ List the commands
         """
-        #self.sf.script_state.list()
-        self.sf.script_state.list_new()
+        self.sf.script_state.list_full()
 
     def load_script_file(self, fname) -> None:
         """ Load script file from fname
