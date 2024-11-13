@@ -1,11 +1,12 @@
 """ This holds the interpreted script
 """
 import logging
-from typing import List, Union
-from tx_engine import Script,  opcode_index
+from typing import List, Union, Any
+import bitcoin_script_parser.bitcoin_script_parser
+from tx_engine import Script
 from tx_engine.engine.op_code_names import OP_CODE_NAMES
 from util import has_extension
-
+import bitcoin_script_parser
 
 LOGGER = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ class ScriptState():
         """
         self.script = None # this is loaded from the file & remains unchanged
         # instruction location
-        self.instruction_offset: List[int] = []
+        self.instruction_offset: List[Any] = []
 
     def load_file(self, filename: str) -> None:
         """ Load loaded file, but don't parse it
@@ -93,12 +94,14 @@ class ScriptState():
             self.script = Script() 
             # Iterate through each line and process it, adding each part to the script
             for line in contents:
-                print(f'{line}')
+                #print(f'{line}')
                 tmp_script = Script.parse_string(line)
                 self.script += tmp_script
 
         # set up the instruction offsets
-        self.instruction_offset =  opcode_index(self.script)
+        script_str = self.script.to_string()
+        print(f'parse_script_new -> {script_str}')
+        self.instruction_offset =  bitcoin_script_parser.bitcoin_script_parser.parse_script(self.script.to_string())
 
     def list_full(self) -> None:
         if self.script:
@@ -118,3 +121,5 @@ class ScriptState():
         if self.script is None:
             self.script = Script()
         self.script.cmds = cmds
+
+#OP_PUSHDATA4 0x04000000 0xaabbccdd

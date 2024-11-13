@@ -58,7 +58,7 @@ class DebuggingContext:
 
         # Next instruction
         assert isinstance(self.sf.instruction_count, int)
-        self.sf.context.ip_start = self.sf.script_state.instruction_offset[self.sf.instruction_count]
+        self.sf.context.ip_start = self.sf.script_state.instruction_offset[self.sf.instruction_count][1]
         self.sf.instruction_count += 1
         # ip_limit -> This is how far (in bytes to step)
         print(f'debug_context.step -> instruction count -> {self.sf.instruction_count}')
@@ -68,7 +68,7 @@ class DebuggingContext:
         if self.sf.instruction_count == len(self.sf.script_state.instruction_offset):
             self.sf.context.ip_limit = None
         else:
-            self.sf.context.ip_limit = self.sf.script_state.instruction_offset[self.sf.instruction_count]
+            self.sf.context.ip_limit = self.sf.script_state.instruction_offset[self.sf.instruction_count][1]
         exec_step: bool = self.sf.context.evaluate_core()
         print(f'Value in db_context.step of sf.context.ip_limit {self.sf.context.ip_limit}')
         return exec_step
@@ -77,7 +77,6 @@ class DebuggingContext:
         """ Reset the script ready to run - interface to Debugger
         """
         LOGGER.info("debug_context - reset")
-        self.sf.ip = 0
         self.sf.reset_core()
         self.sf.reset_stacks()
 
@@ -85,8 +84,6 @@ class DebuggingContext:
         """ Return true if script has not finished
         """
         return self.sf.can_run()
-    
-    0x05000000
 
     def get_next_breakpoint(self) -> None | int:
         """ Based on the current ip determine the next breakpoint
@@ -96,16 +93,16 @@ class DebuggingContext:
         """ Run the script
         """
         # Check for breakpoints
-        if self.sf.ip is None:
-            self.sf.ip = 0
+        if self.sf.instruction_count is None:
+            self.sf.instruction_count = 0
 
-        next_bp = self.sf.breakpoints.get_next_breakpoint(self.sf.ip)
+        next_bp = self.sf.breakpoints.get_next_breakpoint(self.sf.instruction_count)
         if next_bp is None:
             self.sf.context.ip_limit = None
-            self.sf.ip = 0
+            self.sf.instruction_count = 0
         else:
             self.sf.context.ip_limit = next_bp
-            self.sf.ip = next_bp
+            self.sf.instruction_count = next_bp
         succ = self.sf.context.evaluate_core()
         if not succ:
             print("Operation failed.")
@@ -152,4 +149,5 @@ class DebuggingContext:
             Load any use(d) library files
         """
         self.sf.script_state.load_file(fname)
+        self.reset()
         self.sf.breakpoints.reset_all()

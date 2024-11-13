@@ -3,10 +3,11 @@
 import unittest
 
 import sys
-sys.path.append("../src")
+sys.path.append("../python/src")
 
 from debug_interface import DebuggerInterface
 from tx_engine import Stack
+import bitcoin_script_parser
 
 EXAMPLE_ADD = "../examples/add.bs"
 EXAMPLE_SWAP = "../examples/swap.bs"
