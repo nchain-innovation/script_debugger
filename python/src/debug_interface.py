@@ -30,6 +30,7 @@ q, quit, exit -- Quits the program.
 
 file <filename> -- Loads the specified script file for debugging.
 list -- List the current script file contents.
+listops -- List the op codes and their positions to set breakpoints.
 run -- Runs the current loaded script until breakpoint or error.
 i <script> -- Execute script interactively.
 
@@ -39,8 +40,6 @@ dec -- Display the main stack in decimal values.
 reset -- Reset the script to the staring position.
 s -- Step over the next instruction.
 c -- Continue the current loaded script until breakpoint or error.
-
-b -- Adds a breakpoint on the current operation.
 b <n>-- Adds a breakpoint on the nth operation.
 info break -- List all the current breakpoints.
 d <n> -- Deletes breakpoint number n.
@@ -65,14 +64,15 @@ class DebuggerInterface:
     def print_status(self) -> None:
         """ Print out the current stack contents
         """
-        altstack = self.db_context.get_altstack()
-        stack = self.db_context.get_stack()
+        #altstack = self.db_context.get_altstack()
+        #stack = self.db_context.get_stack()
         if self.hex_stack:
             # Print stack in hex form
-            hstack = [e.hex() for e in stack]
-            print(f"altstack = {altstack}, stack(hex) = {hstack}")
+            print(f"stack(hex) = {[['0x' + ''.join(f"{n:02x}" for n in inner_list)] for inner_list in self.db_context.get_stack()]}")  
+            print(f"altstack = {[['0x' + ''.join(f"{n:02x}" for n in inner_list)] for inner_list in self.db_context.get_altstack()]}")
         else:
-            print(f"altstack = {altstack}, stack = {stack}")
+            print(f"stack(bytes)  = {self.db_context.get_stack()}, altstack = {self.db_context.get_altstack()}")
+
 
     def load_script_file(self, fname: str) -> None:
         """ Load a script file
@@ -152,20 +152,15 @@ class DebuggerInterface:
             print("No script loaded.")
             return
 
-        if len(user_input) > 1:
-            n = int(user_input[1])
-            if n >= self.db_context.get_number_of_operations():
-                print('Breakpoint beyond end of script.')
-                return
-        else:
-            if self.db_context.is_not_runable():
-                print('Script is not running.')
-                return
-            if isinstance(self.db_context.ip, int):
-                n = max(self.db_context.ip - 1, 0)
-            else:
-                n = 0
-
+        if len(user_input) < 2: 
+            print("Breakpoint location not set")
+            return 
+        
+        n = int(user_input[1])
+        if n >= self.db_context.get_number_of_operations():
+            print('Breakpoint beyond end of script.')
+            return
+        
         bpid = self.db_context.breakpoints.add(n)
         if bpid is None:
             print("Breakpoint already present at this address.")
@@ -206,6 +201,14 @@ class DebuggerInterface:
             s = user_input[1:]
             line: str = " ".join(s)
             self.db_context.interpret_line(line)
+    
+    def execution_location(self) -> None:
+        # note the instruction_count starts at zero. 
+        if self.db_context.sf.instruction_count >= len(self.db_context.sf.instruction_offset):
+            print('Instruction count beyond the end of the script')
+        else:
+            print(f'Instruction Number -> {self.db_context.sf.instruction_count}')
+            print(f'Op Code -> {self.db_context.sf.instruction_offset[self.db_context.sf.instruction_count][0]}')
 
     def process_input(self, user_input: List[str]) -> None:
         """ process user input
@@ -219,6 +222,8 @@ class DebuggerInterface:
                 self.load_script_file(user_input[1])
         elif user_input[0] == "list":
             self.db_context.list()
+        elif user_input[0] == "listops":
+            self.db_context.list_ops()
         elif user_input[0] == "info" and user_input[1] == "break":
             self.list_breakpoints()
         elif user_input[0] == "hex":
@@ -239,6 +244,8 @@ class DebuggerInterface:
             self.delete_breakpoint(user_input)
         elif user_input[0] == "i":
             self.interpreter_mode(user_input)
+        elif user_input[0] == "l":
+            self.execution_location()
         else:
             print(f'Unknown command "{user_input[0]}"".')
 
@@ -246,7 +253,7 @@ class DebuggerInterface:
         """ Main print-read-eval loop of debugger.
         """
         while True:
-            #self.print_status()
+            self.print_status()
             user_input = input("(gdb) ")
             split_input: List[str] = user_input.strip().split()
             if len(split_input) == 0:

@@ -1,0 +1,30 @@
+[package]
+name = "bitcoin_script_parser"
+version = "0.1.0"
+description = "This is a library that parses bitcoin script. It uses PEG"
+edition = "2021"
+keywords = ["bitcoin","sv", "PEG"]
+license = "MIT"
+
+[dependencies]
+pyo3 = { version = "0.22.5", features = ["extension-module"], optional = true }
+pest = "2.6"
+pest_derive = "2.6"
+# Used by the interface feature
+serde = { version = "1.0.203", features = ["derive"], optional = true }
+serde_json = { version = "1.0.117", optional = true }
+reqwest = { version = "0.12.9", features = ["json"], optional = true }
+anyhow = { version = "1.0.92", optional = true }
+async-mutex = { version = "1.4.0", optional = true }
+async-trait = { version = "0.1.83", optional = true }
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = "s"     # Optimize for size over speed
+lto = true          # Enable link-time optimizations to shrink binary
+
+["features"]
+default = ["python"]  # Enable the feature by default for Python build
+python = ["pyo3"]

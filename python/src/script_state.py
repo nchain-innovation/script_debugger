@@ -122,4 +122,3 @@ class ScriptState():
             self.script = Script()
         self.script.cmds = cmds
 
-#OP_PUSHDATA4 0x04000000 0xaabbccdd

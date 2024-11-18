@@ -3,11 +3,11 @@ import sys
 from tx_engine import Script, Stack
 from tx_engine.engine.op_codes import OP_16, OP_PUSHDATA1, OP_AND
 from tx_engine.engine import context
-
 import bitcoin_script_parser
 
 sys.path.append("../python/src")
 from debug_interface import DebuggerInterface
+from util import print_cmd
 
 def main() -> None:
     print('starting')
@@ -88,22 +88,22 @@ if __name__ == "__main__":
 
     dbif = DebuggerInterface()
     dbif.set_noisy(False)
-    assert(dbif.db_context.sf.instruction_count is None)
     dbif.process_input(["file", "../examples/push_data_for_debugger.bs"])
     #dbif.process_input(["file", "../examples/integer_to_script.bs"])
     dbif.process_input(["list"])
-    print(f'Instruction offset -> {dbif.db_context.sf.script_state.instruction_offset}')
+    #assert(dbif.db_context.sf.instruction_count == 0)
+    #print(f'Instruction offset -> {dbif.db_context.sf.instruction_offset}')
 
-    print(dbif.db_context.sf.script_state.script)
+    #print(dbif.db_context.sf.context.cmds)
 
     #dbif.process_input(["run"])
     #print(dbif.db_context.get_stack())
 
-    #print('step 1')
+    print('step 1')
     dbif.process_input(["step"])
     print(dbif.db_context.get_stack())
     #print(f'Instruction offset -> {dbif.db_context.sf.script_state.instruction_offset}')
-    #input()
+    input()
 
     #print(f'Instruction Count after 1st Step {dbif.db_context.sf.instruction_count}')
     #print(f'instruction index for next step {dbif.db_context.sf.script_state.instruction_offset[dbif.db_context.sf.instruction_count]}')
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     print('step 2')
     dbif.process_input(["step"])
     print(dbif.db_context.get_stack())
-    #input()
+    input()
 
     #print(f'instruction index for next step {dbif.db_context.sf.script_state.instuction_offset[dbif.db_context.sf.instruction_count]}')
     ##print(f'Instruction Count after 2nd Step {dbif.db_context.sf.instruction_count}')
@@ -119,26 +119,76 @@ if __name__ == "__main__":
     dbif.process_input(["step"])
     #print(f'Instruction offset -> {dbif.db_context.sf.script_state.instruction_offset}')
     print(dbif.db_context.get_stack())
-    #input()
+    input()
 
     print('step 4')
     dbif.process_input(["step"])
     print(dbif.db_context.get_stack())
     #print(f'Instruction offset -> {dbif.db_context.sf.script_state.instruction_offset}')
-    #input()
+    input()
 
     print('step 5')
     dbif.process_input(["step"])
     print(dbif.db_context.get_stack())
     #print(f'Instruction offset -> {dbif.db_context.sf.script_state.instruction_offset}')
-    #input()
+    input()
+
+    print('RELOADING THE SCRIPT\n')
 
     dbif.process_input(["file", "../examples/integer_to_script.bs"])
     dbif.process_input(["list"]) 
     print(f'Instruction Count after reloading -> {dbif.db_context.sf.instruction_count}')
-    print(f'Instruction Index -> {dbif.db_context.sf.script_state.instruction_offset}')
-    dbif.process_input(["run"])
-    #print(dbif.db_context.get_stack()) 
+    print(f'instruct start location ->{dbif.db_context.sf.context.ip_start} ')
+    print(f'instruct end location ->{dbif.db_context.sf.context.ip_limit} ')
+    #print(f'Instruction Index -> {dbif.db_context.sf.instruction_offset}')
+    print(f'Script after reloading -> {dbif.db_context.sf.context.cmds}')
+    print("Step 1")
+    dbif.process_input(["step"])
+    print(dbif.db_context.get_stack()) 
+    print("End Step 1\n")
+    input()
+    print("Step 2")
+    dbif.process_input(["step"])
+    print(dbif.db_context.get_stack()) 
+    print("End Step 2")
+    input()
+
+    print("Step 3")
+    dbif.process_input(["step"])
+    print(dbif.db_context.get_stack()) 
+    print("End Step3")
+    input()
+
+    print("Step 4")
+    dbif.process_input(["step"])
+    print(dbif.db_context.get_stack()) 
+    print("End Step 4")
+    input()
+
+    print("Step 5")
+    dbif.process_input(["step"])
+    print(dbif.db_context.get_stack()) 
+    print("End Step 5")
+
+    print("STEP 6")
+    dbif.process_input(["step"])
+    print(dbif.db_context.get_stack()) 
+    print("End Step 6")
+
+    print("STEP 7")
+    dbif.process_input(["step"])
+    print(dbif.db_context.get_stack()) 
+    print("End Step 7")
+
+    print("STEP 8")
+    dbif.process_input(["step"])
+    print(dbif.db_context.get_stack()) 
+    print("End Step 8")
+
+    print("STEP 9")
+    dbif.process_input(["step"])
+    print(dbif.db_context.get_stack()) 
+    print("End Step 9")
     # script_push = Script.parse_string("OP_10 OP_PUSHDATA1 0x02 0xaabb 0x02 0xaabbcc"); 
     #script_push = Script.parse_string("0x01 OP_PUSHDATA1 0x02 0xaabb 0x02"); 
     #op_code_locs = opcode_index(script_push)

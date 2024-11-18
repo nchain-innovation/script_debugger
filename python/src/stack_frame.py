@@ -34,28 +34,6 @@ def print_cmd(i: int, cmd, indent: int = 0) -> int:
         print(f"{i}: {' ' * indent}{int.from_bytes(cmd, byteorder='little')} (0x{cmd.hex()}, {cmd})")
     return indent
 
-def format_cmds(script_str: str) -> str:
-    lines = script_str.split() # split by whitespaces
-    formatted_script: List = []
-    indent: int = 0
-    for op in lines:
-        if op in ["OP_IF", "OP_NOTIF"]:
-            formatted_script.append(' ' * indent + op)
-            indent += 2
-        elif op == "OP_ELSE":
-            # decrease before printing, OP_ELSE, increase afterwards
-            indent -= 2
-            formatted_script.append(' ' * indent + op)
-            indent += 2
-        elif op == "OP_ENDIF":
-            # decreate indentation befre printing
-            indent -= 2
-            formatted_script.append(' ' * indent + op)
-        else:
-            # just print
-            formatted_script.append(' ' * indent + op)
-    return '\n'.join(formatted_script)
-
 
 class StackFrame:
     """ This is the state of a script
@@ -85,7 +63,8 @@ class StackFrame:
         """
         #self.context.set_commands(self.script_state.script)
         self.instruction_count = 0
-       
+        self.context.ip_start = 0
+        self.context.ip_limit = None
 
         # set the script for the next 
         # self.context.set_commands(self.script_state.script_after_debug_step)
@@ -112,18 +91,19 @@ class StackFrame:
     def print_cmd(self) -> None:
         """ Print the current command
         """
-        assert isinstance(self.ip, int)
-        print_cmd(self.ip, self.context.cmds[self.ip])
+        assert isinstance(self.instruction_count, int)
+        #print_cmd(self.instruction_count, self.context.cmds[self.instruction_count])
+        print(f"OP Code -> {self.instruction_offset[self.instruction_count][0]}")
 
     def print_breakpoint(self) -> None:
         """ Print the hit breakpoint
         """
-        assert isinstance(self.ip, int)
-        print(f"{self.ip} - Hit breakpoint: {self.breakpoints.get_associated(self.ip)}", end=" ")
+        assert isinstance(self.instruction_count, int)
+        print(f"Instruction Pointer -> {self.instruction_count} - Hit breakpoint: {self.breakpoints.get_associated(self.instruction_count)}", end=" ")
         self.print_cmd()
 
     def hit_breakpoint(self) -> bool:
         """ Return true if hit breakpoint
         """
-        assert isinstance(self.ip, int)
-        return self.breakpoints.hit(self.ip)
+        assert isinstance(self.instruction_count, int)
+        return self.breakpoints.hit(self.instruction_count)

@@ -32,7 +32,7 @@ class DebuggerTests(unittest.TestCase):
 
     def test_run(self):
         self.dbif.process_input(["file", EXAMPLE_ADD])
-        self.assertIsNone(self.dbif.db_context.instruction_count)
+        self.assertEqual(self.dbif.db_context.instruction_count, 0)
 
         self.dbif.process_input(["run"])
         self.assertIsNotNone(self.dbif.db_context.instruction_count)
@@ -40,7 +40,7 @@ class DebuggerTests(unittest.TestCase):
 
     def test_step(self):
         self.dbif.process_input(["file", EXAMPLE_ADD])
-        self.assertIsNone(self.dbif.db_context.instruction_count)
+        self.assertEqual(self.dbif.db_context.instruction_count,0)
 
         self.dbif.process_input(["s"])
         self.assertIsNotNone(self.dbif.db_context.instruction_count)
@@ -59,7 +59,7 @@ class DebuggerTests(unittest.TestCase):
 
     def test_step_and_reset(self):
         self.dbif.process_input(["file", EXAMPLE_ADD])
-        self.assertIsNone(self.dbif.db_context.instruction_count)
+        self.assertEqual(self.dbif.db_context.instruction_count,0)
 
         self.dbif.process_input(["s"])
         self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1]]))
@@ -83,7 +83,7 @@ class DebuggerTests(unittest.TestCase):
 
     def test_step_and_run(self):
         self.dbif.process_input(["file", EXAMPLE_ADD])
-        self.assertIsNone(self.dbif.db_context.instruction_count)
+        self.assertEqual(self.dbif.db_context.instruction_count,0)
 
         self.dbif.process_input(["s"])
         self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1]]))
@@ -95,7 +95,7 @@ class DebuggerTests(unittest.TestCase):
 
     def test_file_load_twice(self):
         self.dbif.process_input(["file", EXAMPLE_ADD])
-        self.assertIsNone(self.dbif.db_context.instruction_count)
+        self.assertEqual(self.dbif.db_context.instruction_count,0)
 
         self.dbif.process_input(["run"])
         self.assertIsNotNone(self.dbif.db_context.instruction_count)
