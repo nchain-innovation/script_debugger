@@ -140,8 +140,9 @@ class DebuggerInterface:
 
         if self.db_context.can_run():
             # step to step over current breakpoint
-            self.db_context.step()
-            self.db_context.run()
+            #self.db_context.step()
+            #self.db_context.run()
+            self.db_context.continue_script()
         else:
             print('At end of script, use "reset" to run again.')
 
@@ -175,8 +176,8 @@ class DebuggerInterface:
         if len(bps) == 0:
             print("No breakpoints.")
         else:
-            for k, v in bps.items():
-                print(f"Breakpoint: {k} operation number: {v}")
+            for op_number, b in enumerate(bps, start=0):
+                print(f"Breakpoint: {op_number} operation number: {b} op code: { self.db_context.sf.instruction_offset[b][0]}")
 
     def delete_breakpoint(self, user_input: List[str]) -> None:
         """ Delete a breakpoint
@@ -184,14 +185,15 @@ class DebuggerInterface:
         if len(user_input) < 2:
             print("Provide the n of the breakpoint to delete.")
         else:
-            n = user_input[1]
-            bp = self.db_context.breakpoints.get_all()
-            if n in bp.keys():
-                if self.db_context.noisy:
-                    print(f"Deleted breakpoint {n}.")
-                self.db_context.breakpoints.delete(n)
-            else:
-                print(f"Breakpoint {n} not found.")
+            try:
+                n = int(user_input[1].strip())
+                # delete the breakpoint at the given index.
+                if n > len(self.db_context.breakpoints.breakpoints):
+                    print(f'No breakpoint at {n}')
+                    return
+                del self.db_context.breakpoints.breakpoints[n]
+            except ValueError:
+                print("Invalid string to number conversion")
 
     def interpreter_mode(self, user_input: List[str]) -> None:
         """ Interpret user input as bitcoin script
@@ -204,6 +206,7 @@ class DebuggerInterface:
     
     def execution_location(self) -> None:
         # note the instruction_count starts at zero. 
+        print(f'Instruction Number -> {self.db_context.sf.instruction_count}')
         if self.db_context.sf.instruction_count >= len(self.db_context.sf.instruction_offset):
             print('Instruction count beyond the end of the script')
         else:
@@ -244,7 +247,7 @@ class DebuggerInterface:
             self.delete_breakpoint(user_input)
         elif user_input[0] == "i":
             self.interpreter_mode(user_input)
-        elif user_input[0] == "l":
+        elif user_input[0] == "loc":
             self.execution_location()
         else:
             print(f'Unknown command "{user_input[0]}"".')
@@ -266,7 +269,7 @@ class DebuggerInterface:
     def load_files_from_list(self, filenames: List[str]) -> None:
         """ Parse the provided list of filenames and load script files.
         """
-        print(f"filenames={filenames}")
+        # print(f"filenames={filenames}")
         for fname in filenames:
             # determine the file extension
             if has_extension(fname, "bs") or has_extension(fname, "ms"):

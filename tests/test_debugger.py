@@ -23,6 +23,26 @@ class DebuggerTests(unittest.TestCase):
         self.dbif = DebuggerInterface()
         self.dbif.set_noisy(False)
 
+    def test_breakpoint(self):
+        self.dbif.process_input(["file", EXAMPLE_SWAP])
+
+        self.dbif.process_input(["b", "2"])
+
+
+        self.dbif.process_input(["run"])
+        self.assertEqual(self.dbif.db_context.ip, 2)
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1],[2]]))
+
+        # Restarts from the begining
+        self.dbif.process_input(["reset"])
+        self.dbif.process_input(["run"])
+        self.assertEqual(self.dbif.db_context.ip, 2)
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1], [2]]))
+        # Continues from current position
+        self.dbif.process_input(["c"])
+        self.assertEqual(self.dbif.db_context.ip, len(self.dbif.db_context.sf.instruction_offset))
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1], [3], [2]]))
+
     def test_file(self):
         """ Simple file load
         """
@@ -115,25 +135,6 @@ class DebuggerTests(unittest.TestCase):
         self.dbif.process_input(["step"])
         self.assertEqual(self.dbif.db_context.instruction_count, 1)
         self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1]]))
-'''
-    def test_breakpoint(self):
-        self.dbif.process_input(["file", EXAMPLE_SWAP])
-
-        self.dbif.process_input(["b", "2"])
-
-        self.dbif.process_input(["run"])
-        self.assertEqual(self.dbif.db_context.ip, 2)
-        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1],[2]]))
-
-        # Restarts from the begining
-        self.dbif.process_input(["run"])
-        self.assertEqual(self.dbif.db_context.ip, 2)
-        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1], [2]]))
-
-        # Continues from current position
-        self.dbif.process_input(["c"])
-        self.assertEqual(self.dbif.db_context.ip, 0)
-        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1], [3], [2]]))
 
     def test_interpreter(self):
         self.dbif.process_input(["i", "1", "2", "OP_ADD"])
@@ -162,6 +163,17 @@ class DebuggerTests(unittest.TestCase):
         self.dbif.process_input(["run"])
         self.assertEqual(self.dbif.db_context.get_stack(),Stack([]))
 
-'''
+        self.dbif.process_input(["reset"])
+        self.dbif.process_input(["b", "3"])
+        self.dbif.process_input(["b", "4"])
+        # test breakpoints are set.
+        self.dbif.process_input(["run"])
+        print(f'{self.dbif.db_context.get_stack()}')
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[0, 160, 114, 78, 24, 9], [0, 160, 114, 78, 24, 9]]))
+        self.dbif.process_input(["c"])
+        self.assertEqual(self.dbif.db_context.get_stack(),  Stack([[0, 64, 229, 156, 48, 18], [0, 64, 229, 156, 48, 18]]))
+        self.dbif.process_input(["c"])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([]))
+        
 if __name__ == "__main__":
     unittest.main()

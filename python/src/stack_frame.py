@@ -99,7 +99,10 @@ class StackFrame:
         """ Print the hit breakpoint
         """
         assert isinstance(self.instruction_count, int)
-        print(f"Instruction Pointer -> {self.instruction_count} - Hit breakpoint: {self.breakpoints.get_associated(self.instruction_count)}", end=" ")
+        print(f'{self.breakpoints.get_all()}')
+        print(f'BP Index -> {self.breakpoints.current_bp_index}')
+        assert (self.instruction_count == self.breakpoints.breakpoints[self.breakpoints.current_bp_index])
+        print(f"Instruction Pointer -> {self.instruction_count} - Hit breakpoint: {self.instruction_offset[self.instruction_count][0]}", end=" ")
         self.print_cmd()
 
     def hit_breakpoint(self) -> bool:
