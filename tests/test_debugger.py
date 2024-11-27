@@ -136,10 +136,6 @@ class DebuggerTests(unittest.TestCase):
         self.assertEqual(self.dbif.db_context.instruction_count, 1)
         self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1]]))
 
-    def test_interpreter(self):
-        self.dbif.process_input(["i", "1", "2", "OP_ADD"])
-        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3]]))
-
     def test_push_data(self):
         self.dbif.process_input(["file", EXAMPLE_PUSHDATA])
         self.dbif.process_input(["run"])

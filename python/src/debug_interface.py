@@ -32,7 +32,6 @@ file <filename> -- Loads the specified script file for debugging.
 list -- List the current script file contents.
 listops -- List the op codes and their positions to set breakpoints.
 run -- Runs the current loaded script until breakpoint or error.
-i <script> -- Execute script interactively.
 
 hex -- Display the main stack in hexidecimal values.
 dec -- Display the main stack in decimal values.
@@ -43,6 +42,7 @@ c -- Continue the current loaded script until breakpoint or error.
 b <n>-- Adds a breakpoint on the nth operation.
 info break -- List all the current breakpoints.
 d <n> -- Deletes breakpoint number n.
+loc -- Gives the current OP_CODE and location
 """
 
 
@@ -141,8 +141,6 @@ class DebuggerInterface:
 
         if self.db_context.can_run():
             # step to step over current breakpoint
-            #self.db_context.step()
-            #self.db_context.run()
             self.db_context.continue_script()
         else:
             print('At end of script, use "reset" to run again.')
@@ -195,18 +193,10 @@ class DebuggerInterface:
                 del self.db_context.breakpoints.breakpoints[n]
             except ValueError:
                 print("Invalid string to number conversion")
-
-    def interpreter_mode(self, user_input: List[str]) -> None:
-        """ Interpret user input as bitcoin script
-        """
-        if len(user_input) > 1:
-            # interpret line
-            s = user_input[1:]
-            line: str = " ".join(s)
-            self.db_context.interpret_line(line)
     
     def execution_location(self) -> None:
         # note the instruction_count starts at zero. 
+        assert(self.db_context.sf.instruction_count is not None)
         print(f'Instruction Number -> {self.db_context.sf.instruction_count}')
         if self.db_context.sf.instruction_count >= len(self.db_context.sf.instruction_offset):
             print('Instruction count beyond the end of the script')
@@ -246,8 +236,6 @@ class DebuggerInterface:
             self.add_breakpoint(user_input)
         elif user_input[0] == "d":
             self.delete_breakpoint(user_input)
-        elif user_input[0] == "i":
-            self.interpreter_mode(user_input)
         elif user_input[0] == "loc":
             self.execution_location()
         else:

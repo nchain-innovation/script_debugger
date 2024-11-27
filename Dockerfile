@@ -62,6 +62,3 @@ RUN maturin build --release --out target/wheels \
 # Set the default command for the container
 CMD ["/bin/bash"]
 
-# Environment variable to detect we are in a docker instance
-#ENV APP_ENV=docker
-# CMD [ "python", "python/src/dbg.py"]

@@ -86,7 +86,7 @@ class StackFrame:
         """ Return the current command
         """
         assert isinstance(self.instruction_count, int)
-        return self.context.cmds[self.ip]
+        return self.context.cmds[self.instruction_count]
 
     def print_cmd(self) -> None:
         """ Print the current command

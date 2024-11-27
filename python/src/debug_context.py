@@ -43,6 +43,7 @@ class DebuggingContext:
     def ip(self) -> Optional[int]:
         """ Returns the current Instruction Pointer (the second element in the tuple)
         """
+        assert (self.sf.instruction_count is not None)
         if self.sf.instruction_count >= len(self.sf.instruction_offset):
             return len(self.sf.instruction_offset)
         return self.sf.instruction_offset[self.sf.instruction_count][1]
@@ -175,7 +176,6 @@ class DebuggingContext:
             print("Operation failed.")
         else:
             # test for any breakpoints
-            print('testing for break points')
             if len(self.sf.breakpoints.breakpoints) > 0:
                 if self.sf.hit_breakpoint() and self.noisy:
                     self.sf.print_breakpoint()
@@ -185,19 +185,6 @@ class DebuggingContext:
             Not the data elements
         """
         return len(self.sf.instruction_offset)
-
-    def interpret_line(self, user_input: str) -> None:
-        """ Interpret the provided line in separate context.
-        """
-        try:
-            script = Script.parse_string(user_input)
-        except NameError as e:
-            print(e)
-            return
-
-        self.sf.context.set_commands(script)
-        if not self.sf.context.evaluate_core():
-            print("Operation failed")
 
     def has_script(self) -> bool:
         """ Return True if we have a script loaded.
