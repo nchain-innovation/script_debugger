@@ -1,5 +1,5 @@
 #!/bin/bash
 
 # Build the mopengine
-docker build --tag "script_debugger" .
+docker build --no-cache --tag "script_debugger" .
 

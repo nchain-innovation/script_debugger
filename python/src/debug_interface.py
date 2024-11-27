@@ -68,8 +68,9 @@ class DebuggerInterface:
         #stack = self.db_context.get_stack()
         if self.hex_stack:
             # Print stack in hex form
-            print(f"stack(hex) = {[['0x' + ''.join(f"{n:02x}" for n in inner_list)] for inner_list in self.db_context.get_stack()]}")  
-            print(f"altstack = {[['0x' + ''.join(f"{n:02x}" for n in inner_list)] for inner_list in self.db_context.get_altstack()]}")
+        
+            print(f"stack(hex) = {[['0x' + ''.join(f'{n:02x}' for n in inner_list)] for inner_list in self.db_context.get_stack()]}")  
+            print(f"altstack = {[['0x' + ''.join(f'{n:02x}' for n in inner_list)] for inner_list in self.db_context.get_altstack()]}")
         else:
             print(f"stack(bytes)  = {self.db_context.get_stack()}, altstack = {self.db_context.get_altstack()}")
 
