@@ -1,0 +1,101 @@
+@startuml debuuger
+title Debugger
+
+class DebugInterface {
+    context: DebuggingContext
+
+    set_noisy(self, boolean: bool)
+    print_status(self)
+    load_script_file(self, fname: str)
+    has_script(self) -> bool
+    run(self)
+    reset(self)
+    step(self, stepping: bool)
+    continue_script(self)
+    add_breakpoint(self, user_input: List[str])
+    list_breakpoints(self)
+    delete_breakpoint(self, user_input: List[str])
+    execution_location(self)
+    process_input(self, user_input: List[str])
+    read_eval_print_loop(self)
+    load_files_from_list(self, filenames: List[str])
+}
+
+class DebuggingContext {
+    sf : StackFrame
+
+    get_stack(self)
+    get_altstack(self)
+    breakpoints(self) -> Breakpoints
+    ip(self) -> Optional[int]
+    instruction_count(self) -> Optional[int]:
+    step(self) -> bool
+    reset(self)
+    can_run(self) -> bool
+    run(self, stop_on_fn_end: bool = False)
+    continue_script(self)
+    get_number_of_operations(self) -> int
+    has_script(self) -> bool
+    is_not_runable(self) -> bool
+    list(self)
+    list_ops(self) -> None
+    load_script_file(self, fname)
+}
+
+
+DebugInterface -down-* DebuggingContext
+
+class StackFrame {
+    name
+    context: Context
+    breakpoints: Breakpoints
+    instruction_count: int
+    instruction_offset: List
+
+    __repr__(self) -> str
+    reset_core(self)
+    reset_stacks(self)
+    can_run(self) -> bool
+    get_cmd(self) -> Command
+    print_cmd(self)
+    print_breakpoint(self)
+    hit_breakpoint(self) -> bool
+}
+
+DebuggingContext -down-* StackFrame
+
+
+class Context {
+    ip_start: int
+    ip_limit: int
+    z: Bytes
+    stack: Stack
+    alt_stack: Stack
+
+    set_commands(self, cmds: Commands)
+    reset_stacks(self)
+    evaluate_core(self, quiet: bool = False) -> bool
+    evaluate(self, quiet: bool = False) -> bool
+    get_stack(self) -> Stack
+    get_altstack(self) -> Stack
+    set_ip_start(self, start: int) -> None
+    set_ip_finish(self, limit: int) -> None
+}
+
+class Breakpoints {
+    breakpoints: List
+    current_bp_index: int
+
+    get_all(self) -> List
+    add(self, op_number: int) -> bool
+    delete(self, id)
+    hit(self, op_number: int) -> bool
+    get_current_bp_index(self) -> int
+    reset_all(self)
+    get_next_breakpoint(self, ip : int) -> Optional[int]
+}
+
+StackFrame -down-* Context
+StackFrame -down-* Breakpoints
+
+@enduml
