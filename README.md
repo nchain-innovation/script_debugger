@@ -2,31 +2,41 @@
 This project provides nChain with a gdb style debugger for bitcoin script. 
 
 
-* `Debugger` - Metascript debugger, this provides a GDB style interface to run, step through and set breakpoints in Metascript and canonical script programs.
+* `dbg` - Bitcoin Script debugger, this provides a GDB style interface to run, step through and set breakpoints in Metascript and canonical script programs.
 
 
 
-These tools are built around a BSV bitcoin script engine written in Python. The script engine is derived from source code found in the book: "Programming Bitcoin by Jimmy Song (O'Reilly). Copyright 2019 Jimmy Song, 978-1-492-03149-4". 
+These tools are built around a BSV bitcoin script engine written in Rust. 
 
-It is included via a submodule.
-
-
-# Syntax Highlighting
-Microsoft Visual Studio Code TDL, SDL and Metascript syntax highlighting is provided by the `vscode-sdl` project.
-
-This can be found in the [SDL VS Code project](https://bitbucket.stressedsharks.com/projects/SDL/repos/vscode-sdl/browse)
 
 # Running the debuuger 
-The project tools can be run from Docker or Python as long as the associated dependencies are met. 
+The project tools can be run from Docker or Python on the commandline as long as the associated dependencies are met. To debugger includes a script parser that is written using a combination of Rust (Pest crate) for Parser Expression Grammer and python. To build please follow the steps below. Pleae note Rust and Maturin must be installed. And you must have a python virtual environment such as penv set up correctly.
+
+### 
+```bash
+maturin build
+pip3 install --force-reinstall "$(find target/wheels -name '*.whl' | head -n 1)"
+```
+
+## To run from the commandline
+```bash
+python3 python/src/dbg.py -file ./examples/large_data_push_integer_test.bs
+```
 
 
 # Using Docker
 
-The tools in this project can be run in a Docker instance.
+The debugger in this project can be run in a Docker instance. The build the container:
+```bash
+./build.sh
+```
+
+To run the debugger in the docker container.
+```bash
+./run_dbg.sh ./examples/large_integer_test.bs
+```
+
+Please note that Bitcoin Script files must have a '.bs' file extension.
 
 
 
-# Pulling the git submodule tx_engine
-Please note that whenever you are cloning a git repository that has a submodule, there is an extra command to execute in order for the submodules to be pulled.  Once the project directory has been cloned, please execute 
-
-git submodule update --init --recursive
