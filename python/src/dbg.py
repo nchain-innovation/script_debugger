@@ -1,6 +1,5 @@
 """ Command line interface to the debugger
 """
-import sys
 import argparse
 
 from debug_interface import DebuggerInterface

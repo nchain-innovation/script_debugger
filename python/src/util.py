@@ -8,6 +8,7 @@ from tx_engine.engine.op_code_names import OP_CODE_NAMES
 
 LOGGER = logging.getLogger(__name__)
 
+
 def has_extension(fname: str, ext: str) -> bool:
     """ Return true if the file extension matches.
     """
@@ -18,6 +19,7 @@ def has_extension(fname: str, ext: str) -> bool:
     else:
         print(f"No file extension provided '{fname}'")
     return False
+
 
 def change_directory(env_var: str) -> None:
     """ Change into the directory specified by the `env_var`
@@ -30,6 +32,7 @@ def change_directory(env_var: str) -> None:
     else:
         LOGGER.info(f"change_directory {source_dir}")
         os.chdir(source_dir)
+
 
 def cmd_repr(cmd: int) -> Union[str, bytes]:
     """ Return a string (and bytes) representation of the command
@@ -58,8 +61,9 @@ def print_cmd(i: int, cmd, indent: int = 0) -> int:
         print(f"{i}: {' ' * indent}{int.from_bytes(cmd, byteorder='little')} (0x{cmd.hex()}, {cmd})")
     return indent
 
+
 def format_cmds(script_str: str) -> str:
-    lines = script_str.split() # split by whitespaces
+    lines = script_str.split()
     formatted_script: List = []
     indent: int = 0
     op_code_count: int = 0
@@ -86,44 +90,37 @@ def format_cmds(script_str: str) -> str:
             formatted_script.append(f'{op_code_count}\t' + f" ' ' * indent + {op}")
             op_code_count += 1
         else:
-            # just print
             formatted_script.append('\t' + ' ' * indent + op)
-            
+
     return '\n'.join(f'\t{item}' for item in formatted_script)
 
 
 def load_file(filename: str) -> Script:
-        """ Load loaded file, but don't parse it
-        """
-        try:
-            # load it
-            with open(filename, "r", encoding="utf-8") as f:
-                # contents = f.readlines()
-                contents = [line.strip() for line in f.readlines()]
-        except FileNotFoundError as e:
-            print(e)
-        else:
-            if has_extension(filename, "bs"):
-                return parse_script_new(contents)
+    """ Load loaded file, but don't parse it
+    """
+    try:
+        # load it
+        with open(filename, "r", encoding="utf-8") as f:
+            # contents = f.readlines()
+            contents = [line.strip() for line in f.readlines()]
+    except FileNotFoundError as e:
+        print(e)
+    else:
+        if has_extension(filename, "bs"):
+            return parse_script_new(contents)
 
 
 def parse_script_new(contents: List[str]) -> Script:
     """ Parse provided contents
     """
-    script = Script() 
+    script = Script()
     if contents:
-    # Initialize an empty script or container to hold the full script
+        # Initialize an empty script or container to hold the full script
         # Iterate through each line and process it, adding each part to the script
         for line in contents:
-            #print(f'{line}')
             tmp_script = Script.parse_string(line)
             script += tmp_script
-
-    # set up the instruction offsets
-    #script_str = script.to_string()
-    #print(f'parse_script_new -> {script_str}')
     return script
-    #self.instruction_offset =  bitcoin_script_parser.bitcoin_script_parser.parse_script(self.script.to_string())
 
 
 def list_full(script: Script) -> None:

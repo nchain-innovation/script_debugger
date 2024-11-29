@@ -64,16 +64,12 @@ class DebuggerInterface:
     def print_status(self) -> None:
         """ Print out the current stack contents
         """
-        #altstack = self.db_context.get_altstack()
-        #stack = self.db_context.get_stack()
         if self.hex_stack:
             # Print stack in hex form
-        
-            print(f"stack(hex) = {[['0x' + ''.join(f'{n:02x}' for n in inner_list)] for inner_list in self.db_context.get_stack()]}")  
+            print(f"stack(hex) = {[['0x' + ''.join(f'{n:02x}' for n in inner_list)] for inner_list in self.db_context.get_stack()]}")
             print(f"altstack = {[['0x' + ''.join(f'{n:02x}' for n in inner_list)] for inner_list in self.db_context.get_altstack()]}")
         else:
             print(f"stack(bytes)  = {self.db_context.get_stack()}, altstack = {self.db_context.get_altstack()}")
-
 
     def load_script_file(self, fname: str) -> None:
         """ Load a script file
@@ -125,7 +121,7 @@ class DebuggerInterface:
             self.db_context.reset()
 
         if self.db_context.can_run():
-            self.db_context.step() # this returns true/false .. if true then set the script for the next step
+            self.db_context.step()
         else:
             print('At end of script, use "reset" to run again.')
 
@@ -152,15 +148,15 @@ class DebuggerInterface:
             print("No script loaded.")
             return
 
-        if len(user_input) < 2: 
+        if len(user_input) < 2:
             print("Breakpoint location not set")
-            return 
-        
+            return
+
         n = int(user_input[1])
         if n >= self.db_context.get_number_of_operations():
             print('Breakpoint beyond end of script.')
             return
-        
+
         bpid = self.db_context.breakpoints.add(n)
         if bpid is None:
             print("Breakpoint already present at this address.")
@@ -193,10 +189,9 @@ class DebuggerInterface:
                 del self.db_context.breakpoints.breakpoints[n]
             except ValueError:
                 print("Invalid string to number conversion")
-    
+
     def execution_location(self) -> None:
-        # note the instruction_count starts at zero. 
-        assert(self.db_context.sf.instruction_count is not None)
+        assert (self.db_context.sf.instruction_count is not None)
         print(f'Instruction Number -> {self.db_context.sf.instruction_count}')
         if self.db_context.sf.instruction_count >= len(self.db_context.sf.instruction_offset):
             print('Instruction count beyond the end of the script')

@@ -6,7 +6,7 @@ from tx_engine.engine.engine_types import Command
 from breakpoints import Breakpoints
 from tx_engine.engine.op_code_names import OP_CODE_NAMES
 
-#from script_state import ScriptState, print_cmd
+
 def cmd_repr(cmd: int) -> Union[str, bytes]:
     """ Return a string (and bytes) representation of the command
         e.g. 0x5 -> OP_10
@@ -48,9 +48,6 @@ class StackFrame:
 
         # instruction_count -> means the number of instructions executed
         self.instruction_count: Optional[int] = None
-        # instruction_index into the script (in bytes), breakpoints can only be set on these locations. 
-        # for ease of use, the breakpoint will be the instruction number (displayed on screen?)
-        # this value is then used to index into this array
         self.instruction_offset: List[Tuple[str, int]] = []
 
     def __repr__(self) -> str:
@@ -61,13 +58,9 @@ class StackFrame:
     def reset_core(self) -> None:
         """ Reset the script ready to run
         """
-        #self.context.set_commands(self.script_state.script)
         self.instruction_count = 0
         self.context.ip_start = 0
         self.context.ip_limit = None
-
-        # set the script for the next 
-        # self.context.set_commands(self.script_state.script_after_debug_step)
 
     def reset_stacks(self) -> None:
         """ Reset the associated stacks
@@ -76,9 +69,9 @@ class StackFrame:
 
     def can_run(self) -> bool:
         """ Return true if script has not finished
-            To determine finised, the instruction_count is compared with the 
+            To determine finised, the instruction_count is compared with the
             number of entries in ScriptState.instruction_offset
-        """ 
+        """
         assert isinstance(self.instruction_count, int)
         return self.instruction_count < len(self.instruction_offset)
 
@@ -92,7 +85,6 @@ class StackFrame:
         """ Print the current command
         """
         assert isinstance(self.instruction_count, int)
-        #print_cmd(self.instruction_count, self.context.cmds[self.instruction_count])
         print(f"OP Code -> {self.instruction_offset[self.instruction_count][0]}")
 
     def print_breakpoint(self) -> None:

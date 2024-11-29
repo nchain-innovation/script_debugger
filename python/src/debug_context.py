@@ -27,7 +27,6 @@ class DebuggingContext:
         """
         return self.sf.context.get_stack()
 
-
     def get_altstack(self):
         """ Return the alt stack
         """
@@ -47,7 +46,7 @@ class DebuggingContext:
         if self.sf.instruction_count >= len(self.sf.instruction_offset):
             return len(self.sf.instruction_offset)
         return self.sf.instruction_offset[self.sf.instruction_count][1]
-    
+
     @property
     def instruction_count(self) -> Optional[int]:
         """ Returns the current Instruction count
@@ -61,8 +60,6 @@ class DebuggingContext:
         if self.noisy:
             self.sf.print_cmd()
 
-        # the instruction count start & end must always be based on the instruction offset
-        # if the there is raw data at the beginning of the script in particular. 
         assert isinstance(self.sf.instruction_count, int)
         if self.sf.instruction_count == 0:
             # if the first opcode is not element zero the start point has to be the beginning of the script
@@ -72,7 +69,6 @@ class DebuggingContext:
                 self.sf.context.ip_start = self.sf.instruction_offset[self.sf.instruction_count][1]
         else:
             self.sf.context.ip_start = self.sf.instruction_offset[self.sf.instruction_count][1]
-            
         self.sf.instruction_count += 1
 
         # to handle the last element
@@ -97,24 +93,6 @@ class DebuggingContext:
         """
         return self.sf.can_run()
 
-    #def get_next_breakpoint(self) -> None | int:
-    #    """ Based on the current ip determine the next breakpoint
-    #    """
-
-#if next_breakpoint is None:
-        # No further breakpoints, return current counter
-#        return instruction_counter
-
-    # Calculate number of instructions between current_offset and next_breakpoint
-#    instructions_to_next = sum(
-#        1 for _, offset in opcodes_offsets 
-#        if current_offset < offset <= next_breakpoint
-#    )
-    
-    # Increment instruction counter
-#    return instruction_counter + instructions_to_next
-
-
     def continue_script(self) -> None:
         # if the script is not yet executed .. run from the beginning
         if self.sf.instruction_count is None:
@@ -124,29 +102,19 @@ class DebuggingContext:
             next_bp = self.sf.breakpoints.get_next_breakpoint(self.sf.instruction_count)
             if next_bp is None:
                 # no more break points. run ffrom the current location to the end.
-                print('No more break points')
-                print(f'Setting ip_start to instruction_count {self.sf.instruction_count}')
                 self.sf.context.ip_limit = None
                 self.sf.context.ip_start = self.sf.instruction_offset[self.sf.instruction_count][1]
             else:
-                print('Setting te next  start & end for the script')
-                
                 self.sf.context.ip_limit = self.sf.instruction_offset[next_bp][1]
                 self.sf.context.ip_start = self.sf.instruction_offset[self.sf.instruction_count][1]
-                print(f'Stating at {self.sf.context.ip_start}\nEnding at {self.sf.context.ip_limit }')
 
             succ = self.sf.context.evaluate_core()
             if not succ:
                 print("Operation failed.")
-            # set the ip pointer?
-            # hit a breakpoint and I want to see the instruction-counter
-            # which is the index of the op_code in instruction_offset and the index is given by the breakpoint
+
             if next_bp is None:
-                # no more breakpoints .. set to the one past the lenght of the instruction_offset?
                 self.sf.instruction_count = len(self.sf.instruction_offset)
             else:
-                # this line is not correct .. it sets the instruction count to the script location
-                # self.sf.instruction_count += abs(self.sf.instruction_offset[next_bp][1] - self.sf.instruction_count)
                 self.sf.instruction_count = self.sf.breakpoints.breakpoints[self.sf.breakpoints.current_bp_index]
 
     def run(self) -> None:
@@ -168,7 +136,7 @@ class DebuggingContext:
         else:
             self.sf.context.ip_limit = self.sf.instruction_offset[next_bp][1]
             self.sf.instruction_count = next_bp
-    
+
         # execute
         succ = self.sf.context.evaluate_core()
 
