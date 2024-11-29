@@ -36,8 +36,7 @@ WORKDIR /app
 RUN git clone https://github.com/nchain-innovation/chain-gang.git
     
 WORKDIR /app/chain-gang 
-RUN git checkout private_key_to_pem \
-    && maturin build --release --out target/wheels \
+RUN maturin build --release --out target/wheels \
     && $VIRTUAL_ENV/bin/pip install --root-user-action=ignore "$(find target/wheels -name '*.whl' | head -n 1)" 
 
 
