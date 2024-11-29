@@ -1,11 +1,13 @@
 import os 
 import sys
-from tx_engine import Script, Stack, opcode_index
+from tx_engine import Script, Stack
 from tx_engine.engine.op_codes import OP_16, OP_PUSHDATA1, OP_AND
 from tx_engine.engine import context
+import bitcoin_script_parser
 
-sys.path.append("../src")
+sys.path.append("../python/src")
 from debug_interface import DebuggerInterface
+from util import print_cmd
 
 def main() -> None:
     print('starting')
@@ -75,24 +77,27 @@ if __name__ == "__main__":
     #let script = vec![OP_PUSHDATA4, 0x04, 0x00, 0x00, 0x00, 0xaa, 0xbb, 0xcc, 0xdd,OP_PUSHDATA4, 0x04, 0x00, 0x00, 0x00, 0xaa, 0xbb, 0xcc, 0xdd, OP_ADD, OP_PUSHDATA4, 0x05, 0x00, 0x00, 0x00, 0x00, 0x55, 0x77, 0x99, 0xba, OP_EQUAL];
     #assert_eq!(find_op_locations(&script), vec![0,9,18,19,29]);
     # OP_ADD OP_PUSHDATA4 0x05000000 0x00557799ba OP_EQUALVERIFY
-    script_test:Script = Script.parse_string("OP_PUSHDATA4 0x04000000 0xaabbccdd OP_PUSHDATA4 0x04000000  0xaabbccdd OP_ADD  OP_PUSHDATA4 0x05000000 0x00557799ba OP_EQUAL") 
-    print(script_test)
-    print(opcode_index(script_test))
+    #script_test:Script = Script.parse_string("OP_PUSHDATA4 0x04000000 0xaabbccdd OP_PUSHDATA4 0x04000000  0xaabbccdd OP_ADD  OP_PUSHDATA4 0x05000000 0x00557799ba OP_EQUAL") 
+    #print(script_test)
+    #print(opcode_index(script_test))
     #op_code_idx = opcode_index(script_test)
     #assert(op_code_idx == [0,9,18,19,29])
     #con_push_test = context.Context(script=script_test)
     #con_push_test.evaluate()
     #print(con_push_test.get_stack())
 
-    #dbif = DebuggerInterface()
-    #dbif.set_noisy(False)
-    #assert(dbif.db_context.sf.instruction_count is None)
+    dbif = DebuggerInterface()
+    dbif.set_noisy(False)
     #dbif.process_input(["file", "../examples/push_data_for_debugger.bs"])
     #dbif.process_input(["file", "../examples/integer_to_script.bs"])
-    #dbif.process_input(["list"])
-    #print(f'Instruction offset -> {dbif.db_context.sf.script_state.instruction_offset}')
+    dbif.process_input(["file", "../examples/large_data_push_integer_test.bs"])
+    dbif.process_input(["list"])
+    dbif.process_input(["listops"])
+    print(f'{dbif.db_context.sf.instruction_offset}')
+    #assert(dbif.db_context.sf.instruction_count == 0)
+    #print(f'Instruction offset -> {dbif.db_context.sf.instruction_offset}')
 
-    #print(dbif.db_context.sf.script_state.script)
+    #print(dbif.db_context.sf.context.cmds)
 
     #dbif.process_input(["run"])
     #print(dbif.db_context.get_stack())
@@ -107,20 +112,19 @@ if __name__ == "__main__":
     #print(f'instruction index for next step {dbif.db_context.sf.script_state.instruction_offset[dbif.db_context.sf.instruction_count]}')
 
     #print('step 2')
-    #dbif.process_input(["step"])
     #print(dbif.db_context.get_stack())
+    ##dbif.process_input(["step"])
     #input()
-    ##print(f'Instruction offset -> {dbif.db_context.sf.script_state.instruction_offset}')
 
     #print(f'instruction index for next step {dbif.db_context.sf.script_state.instuction_offset[dbif.db_context.sf.instruction_count]}')
     ##print(f'Instruction Count after 2nd Step {dbif.db_context.sf.instruction_count}')
     #print('step 3')
     #dbif.process_input(["step"])
     #print(f'Instruction offset -> {dbif.db_context.sf.script_state.instruction_offset}')
-    ##print(dbif.db_context.get_stack())
+    #print(dbif.db_context.get_stack())
     #input()
 
-    #print('step 4')
+   # print('step 4')
     #dbif.process_input(["step"])
     #print(dbif.db_context.get_stack())
     #print(f'Instruction offset -> {dbif.db_context.sf.script_state.instruction_offset}')
@@ -132,27 +136,84 @@ if __name__ == "__main__":
     #print(f'Instruction offset -> {dbif.db_context.sf.script_state.instruction_offset}')
     #input()
 
-    script_push = Script.parse_string("0x01 OP_PUSHDATA1 0x02 0xaabb 0x02"); 
+    #print('RELOADING THE SCRIPT\n')
+
+    #dbif.process_input(["file", "../examples/integer_to_script.bs"])
+    #dbif.process_input(["list"]) 
+    #print(f'Instruction Count after reloading -> {dbif.db_context.sf.instruction_count}')
+    #print(f'instruct start location ->{dbif.db_context.sf.context.ip_start} ')
+    #print(f'instruct end location ->{dbif.db_context.sf.context.ip_limit} ')
+    ##print(f'Instruction Index -> {dbif.db_context.sf.instruction_offset}')
+    #print(f'Script after reloading -> {dbif.db_context.sf.context.cmds}')
+    #print("Step 1")
+    #dbif.process_input(["step"])
+    #print("End Step 1\n")
+    ##print(dbif.db_context.get_stack()) 
+    #input()
+    #print("Step 2")
+    #dbif.process_input(["step"])
+    #print(dbif.db_context.get_stack()) 
+    #print("End Step 2")
+    #input()
+
+    #print("Step 3")
+    #dbif.process_input(["step"])
+    #print(dbif.db_context.get_stack()) 
+    #print("End Step3")
+    #input()
+
+    #print("Step 4")
+    #dbif.process_input(["step"])
+    #print("End Step 4")
+    ##print(dbif.db_context.get_stack()) 
+    #input()
+
+    #print("Step 5")
+    #dbif.process_input(["step"])
+    #print(dbif.db_context.get_stack()) 
+    #print("End Step 5")
+
+    #print("STEP 6")
+    #dbif.process_input(["step"])
+    #print(dbif.db_context.get_stack()) 
+    #print("End Step 6")
+
+    #print("STEP 7")
+    #print(dbif.db_context.get_stack()) 
+    ##dbif.process_input(["step"])
+    #print("End Step 7")
+
+    #print("STEP 8")
+    #dbif.process_input(["step"])
+    #print("End Step 8")
+    ##print(dbif.db_context.get_stack()) 
+
+    #print("STEP 9")
+    #dbif.process_input(["step"])
+    #print(dbif.db_context.get_stack()) 
+    #print("End Step 9")
     # script_push = Script.parse_string("OP_10 OP_PUSHDATA1 0x02 0xaabb 0x02 0xaabbcc"); 
-    op_code_locs = opcode_index(script_push)
-    print(script_push)
-    print(op_code_locs)
+    #script_push = Script.parse_string("0x01 OP_PUSHDATA1 0x02 0xaabb 0x02"); 
+    #op_code_locs = opcode_index(script_push)
+    #print(script_push)
+    #print(op_code_locs)
     #assert(op_code_locs == [0, 1]);
-    con_test = context.Context(script=script_push)
-    con_test.evaluate()
-    print(con_test.get_stack())
+    #con_test = context.Context(script=script_push)
+    #con_test.evaluate()
+    #print(con_test.get_stack())
 
 
-    print("TESTING INTEGERS")
-    script_integers = Script.parse_string("2555 2555 OP_EQUALVERIFY"); 
+    #script_integers = Script.parse_string("2555 2555 OP_EQUALVERIFY"); 
+    ##print("TESTING INTEGERS")
     # script_push = Script.parse_string("OP_10 OP_PUSHDATA1 0x02 0xaabb 0x02 0xaabbcc"); 
-    op_code_locs = opcode_index(script_integers)
-    print(script_integers)
-    print(op_code_locs)
+    #op_code_locs = opcode_index(script_integers)
+    #print(script_integers)
+    #print(op_code_locs)
     #assert(op_code_locs == [0, 1]);
-    con_test = context.Context(script=script_integers)
-    con_test.evaluate()
-    print(con_test.get_stack())
+    #con_test = context.Context(script=script_integers)
+    #con_test.evaluate()
+    #print(con_test.get_stack())
+
 
 '''
     sig_string_new = "3046022100f90d26a7e1fe457a8dc24bd6ae37caa0cb9af497ce693008a6f98a67cc803915022100e7f2ed97653413ad67a67ab09f695acd06d72b589dffbd33e8c7c5bea5714eb6"

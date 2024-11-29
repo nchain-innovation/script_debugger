@@ -30,8 +30,8 @@ q, quit, exit -- Quits the program.
 
 file <filename> -- Loads the specified script file for debugging.
 list -- List the current script file contents.
+listops -- List the op codes and their positions to set breakpoints.
 run -- Runs the current loaded script until breakpoint or error.
-i <script> -- Execute script interactively.
 
 hex -- Display the main stack in hexidecimal values.
 dec -- Display the main stack in decimal values.
@@ -39,11 +39,10 @@ dec -- Display the main stack in decimal values.
 reset -- Reset the script to the staring position.
 s -- Step over the next instruction.
 c -- Continue the current loaded script until breakpoint or error.
-
-b -- Adds a breakpoint on the current operation.
 b <n>-- Adds a breakpoint on the nth operation.
 info break -- List all the current breakpoints.
 d <n> -- Deletes breakpoint number n.
+loc -- Gives the current OP_CODE and location
 """
 
 
@@ -65,14 +64,12 @@ class DebuggerInterface:
     def print_status(self) -> None:
         """ Print out the current stack contents
         """
-        altstack = self.db_context.get_altstack()
-        stack = self.db_context.get_stack()
         if self.hex_stack:
             # Print stack in hex form
-            hstack = [e.hex() for e in stack]
-            print(f"altstack = {altstack}, stack(hex) = {hstack}")
+            print(f"stack(hex) = {[['0x' + ''.join(f'{n:02x}' for n in inner_list)] for inner_list in self.db_context.get_stack()]}")
+            print(f"altstack = {[['0x' + ''.join(f'{n:02x}' for n in inner_list)] for inner_list in self.db_context.get_altstack()]}")
         else:
-            print(f"altstack = {altstack}, stack = {stack}")
+            print(f"stack(bytes)  = {self.db_context.get_stack()}, altstack = {self.db_context.get_altstack()}")
 
     def load_script_file(self, fname: str) -> None:
         """ Load a script file
@@ -124,7 +121,7 @@ class DebuggerInterface:
             self.db_context.reset()
 
         if self.db_context.can_run():
-            self.db_context.step() # this returns true/false .. if true then set the script for the next step
+            self.db_context.step()
         else:
             print('At end of script, use "reset" to run again.')
 
@@ -140,8 +137,7 @@ class DebuggerInterface:
 
         if self.db_context.can_run():
             # step to step over current breakpoint
-            self.db_context.step()
-            self.db_context.run()
+            self.db_context.continue_script()
         else:
             print('At end of script, use "reset" to run again.')
 
@@ -152,19 +148,14 @@ class DebuggerInterface:
             print("No script loaded.")
             return
 
-        if len(user_input) > 1:
-            n = int(user_input[1])
-            if n >= self.db_context.get_number_of_operations():
-                print('Breakpoint beyond end of script.')
-                return
-        else:
-            if self.db_context.is_not_runable():
-                print('Script is not running.')
-                return
-            if isinstance(self.db_context.ip, int):
-                n = max(self.db_context.ip - 1, 0)
-            else:
-                n = 0
+        if len(user_input) < 2:
+            print("Breakpoint location not set")
+            return
+
+        n = int(user_input[1])
+        if n >= self.db_context.get_number_of_operations():
+            print('Breakpoint beyond end of script.')
+            return
 
         bpid = self.db_context.breakpoints.add(n)
         if bpid is None:
@@ -180,8 +171,8 @@ class DebuggerInterface:
         if len(bps) == 0:
             print("No breakpoints.")
         else:
-            for k, v in bps.items():
-                print(f"Breakpoint: {k} operation number: {v}")
+            for op_number, b in enumerate(bps, start=0):
+                print(f"Breakpoint: {op_number} operation number: {b} op code: { self.db_context.sf.instruction_offset[b][0]}")
 
     def delete_breakpoint(self, user_input: List[str]) -> None:
         """ Delete a breakpoint
@@ -189,23 +180,24 @@ class DebuggerInterface:
         if len(user_input) < 2:
             print("Provide the n of the breakpoint to delete.")
         else:
-            n = user_input[1]
-            bp = self.db_context.breakpoints.get_all()
-            if n in bp.keys():
-                if self.db_context.noisy:
-                    print(f"Deleted breakpoint {n}.")
-                self.db_context.breakpoints.delete(n)
-            else:
-                print(f"Breakpoint {n} not found.")
+            try:
+                n = int(user_input[1].strip())
+                # delete the breakpoint at the given index.
+                if n > len(self.db_context.breakpoints.breakpoints):
+                    print(f'No breakpoint at {n}')
+                    return
+                del self.db_context.breakpoints.breakpoints[n]
+            except ValueError:
+                print("Invalid string to number conversion")
 
-    def interpreter_mode(self, user_input: List[str]) -> None:
-        """ Interpret user input as bitcoin script
-        """
-        if len(user_input) > 1:
-            # interpret line
-            s = user_input[1:]
-            line: str = " ".join(s)
-            self.db_context.interpret_line(line)
+    def execution_location(self) -> None:
+        assert (self.db_context.sf.instruction_count is not None)
+        print(f'Instruction Number -> {self.db_context.sf.instruction_count}')
+        if self.db_context.sf.instruction_count >= len(self.db_context.sf.instruction_offset):
+            print('Instruction count beyond the end of the script')
+        else:
+            print(f'Instruction Number -> {self.db_context.sf.instruction_count}')
+            print(f'Op Code -> {self.db_context.sf.instruction_offset[self.db_context.sf.instruction_count][0]}')
 
     def process_input(self, user_input: List[str]) -> None:
         """ process user input
@@ -219,6 +211,8 @@ class DebuggerInterface:
                 self.load_script_file(user_input[1])
         elif user_input[0] == "list":
             self.db_context.list()
+        elif user_input[0] == "listops":
+            self.db_context.list_ops()
         elif user_input[0] == "info" and user_input[1] == "break":
             self.list_breakpoints()
         elif user_input[0] == "hex":
@@ -237,8 +231,8 @@ class DebuggerInterface:
             self.add_breakpoint(user_input)
         elif user_input[0] == "d":
             self.delete_breakpoint(user_input)
-        elif user_input[0] == "i":
-            self.interpreter_mode(user_input)
+        elif user_input[0] == "loc":
+            self.execution_location()
         else:
             print(f'Unknown command "{user_input[0]}"".')
 
@@ -246,7 +240,7 @@ class DebuggerInterface:
         """ Main print-read-eval loop of debugger.
         """
         while True:
-            #self.print_status()
+            self.print_status()
             user_input = input("(gdb) ")
             split_input: List[str] = user_input.strip().split()
             if len(split_input) == 0:
@@ -259,7 +253,7 @@ class DebuggerInterface:
     def load_files_from_list(self, filenames: List[str]) -> None:
         """ Parse the provided list of filenames and load script files.
         """
-        print(f"filenames={filenames}")
+        # print(f"filenames={filenames}")
         for fname in filenames:
             # determine the file extension
             if has_extension(fname, "bs") or has_extension(fname, "ms"):

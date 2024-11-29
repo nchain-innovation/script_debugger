@@ -24,6 +24,7 @@ def main(file_name: str):
     while (dbif.db_context.can_run()):
         dbif.db_context.step()
     print(dbif.db_context.get_stack())
+    
 if __name__ == "__main__":
     file_name: str = "/Users/j.murphy/nchain/github-innovation/script_debugger/examples/large_data_push_integer_test.bs"
     main(file_name)
