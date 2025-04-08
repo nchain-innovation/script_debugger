@@ -1,5 +1,6 @@
 """ This provides an interface to the debugger
 """
+from enum import Enum
 import logging
 import sys
 try:
@@ -34,7 +35,11 @@ listops -- List the op codes and their positions to set breakpoints.
 run -- Runs the current loaded script until breakpoint or error.
 
 hex -- Display the main stack in hexidecimal values.
+bytes -- Display the main stack in bytes.
 dec -- Display the main stack in decimal values.
+
+sstart <n> -- Set the start index for stack display (counting from top of the stack); -1 for bottom of the stack.
+send <n> -- Set the end index for stack display (counting from top of the stack).
 
 reset -- Reset the script to the staring position.
 s -- Step over the next instruction.
@@ -45,6 +50,12 @@ d <n> -- Deletes breakpoint number n.
 loc -- Gives the current OP_CODE and location
 """
 
+class DebuggerFormat(Enum):
+    """ Enum for the format of the debugger
+    """
+    BYTES = 0
+    HEX = 1
+    DECIMAL = 2
 
 class DebuggerInterface:
     """ Provides the interface to the debugger
@@ -53,8 +64,11 @@ class DebuggerInterface:
         """ Initial setup
         """
         self.db_context = DebuggingContext()
-        # Display the stack in hex
-        self.hex_stack = False
+        # Debugger format
+        self.format = DebuggerFormat.DECIMAL
+        # Stack indices
+        self.stack_start = None
+        self.stack_end = 1
 
     def set_noisy(self, boolean: bool) -> None:
         """ Set the noisy flag, set to false in unit tests to prevent printouts
@@ -64,12 +78,27 @@ class DebuggerInterface:
     def print_status(self) -> None:
         """ Print out the current stack contents
         """
-        if self.hex_stack:
-            # Print stack in hex form
-            print(f"stack(hex) = {[['0x' + ''.join(f'{n:02x}' for n in inner_list)] for inner_list in self.db_context.get_stack()]}")
-            print(f"altstack = {[['0x' + ''.join(f'{n:02x}' for n in inner_list)] for inner_list in self.db_context.get_altstack()]}")
-        else:
-            print(f"stack(bytes)  = {self.db_context.get_stack()}, altstack = {self.db_context.get_altstack()}")
+        stack_start = self.stack_start if self.stack_start is not None else self.db_context.get_stack().size()
+        match (self.stack_start, self.stack_end):
+            case (None, 1):
+                slice_str = ""
+            case (None, _):
+                slice_str = f"[:-{self.stack_end}]"
+            case (_, 1):
+                slice_str = f"[-{stack_start}:]"
+            case (_, _):
+                slice_str = f"[-{stack_start} : -{self.stack_end}]"
+        match self.format:
+            case DebuggerFormat.BYTES:
+                print(f"stack(bytes){slice_str} = {[self.db_context.get_stack()[i] for i in range(self.db_context.get_stack().size() - stack_start, self.db_context.get_stack().size() - self.stack_end + 1)]}, altstack = {self.db_context.get_altstack()}")
+            case DebuggerFormat.HEX:
+                # Print stack in hex form
+                print(f"stack(hex){slice_str} = {[['0x' + ''.join(f'{n:02x}' for n in self.db_context.get_stack()[i])] for i in range(self.db_context.get_stack().size() - stack_start, self.db_context.get_stack().size() - self.stack_end + 1)]}")
+                print(f"altstack = {[['0x' + ''.join(f'{n:02x}' for n in inner_list)] for inner_list in self.db_context.get_altstack()]}")
+            case DebuggerFormat.DECIMAL:
+                # Print stack in decimal form
+                print(f"stack(dec){slice_str} = {[int.from_bytes(self.db_context.get_stack()[i], "little") for i in range(self.db_context.get_stack().size() - stack_start, self.db_context.get_stack().size() - self.stack_end + 1)]}")
+                print(f"altstack = {[int.from_bytes(inner_list, "little") for inner_list in self.db_context.get_altstack()]}")
 
     def load_script_file(self, fname: str) -> None:
         """ Load a script file
@@ -215,10 +244,12 @@ class DebuggerInterface:
             self.db_context.list_ops()
         elif user_input[0] == "info" and user_input[1] == "break":
             self.list_breakpoints()
+        elif user_input[0] == "bytes":
+            self.format = DebuggerFormat.BYTES
         elif user_input[0] == "hex":
-            self.hex_stack = True
+            self.format = DebuggerFormat.HEX
         elif user_input[0] == "dec":
-            self.hex_stack = False
+            self.format = DebuggerFormat.DECIMAL
         elif user_input[0] == "reset":
             self.reset()
         elif user_input[0] in ("r", "run"):
@@ -233,6 +264,10 @@ class DebuggerInterface:
             self.delete_breakpoint(user_input)
         elif user_input[0] == "loc":
             self.execution_location()
+        elif user_input[0] == "sstart":
+            self.stack_start = None if int(user_input[1]) == -1 else int(user_input[1])
+        elif user_input[0] == "send":
+            self.stack_end = int(user_input[1])
         else:
             print(f'Unknown command "{user_input[0]}"".')
 
