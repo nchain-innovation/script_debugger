@@ -1,0 +1,27 @@
+[package]
+name = "bitcoin_script_parser"
+version = "0.1.0"
+description = "A library that parses bitcoin script, using a PEG grammar."
+edition = "2021"
+keywords = ["bitcoin", "sv", "PEG"]
+license = "MIT"
+
+[dependencies]
+pest = "2.6"
+pest_derive = "2.6"
+# pyo3 0.22 supports CPython up to 3.13. Building against a newer interpreter
+# needs PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1, or a pyo3 upgrade.
+pyo3 = { version = "0.22.5", features = ["extension-module"], optional = true }
+
+[lib]
+# cdylib for the Python extension module; rlib so the parser can be used and
+# unit-tested from Rust (`cargo test --no-default-features`).
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = "s"     # Optimize for size over speed
+lto = true          # Enable link-time optimization to shrink the binary
+
+[features]
+default = ["python"]
+python = ["dep:pyo3"]

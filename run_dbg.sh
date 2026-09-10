@@ -16,5 +16,5 @@ if [ ! -f "$FILE_PATH" ]; then
 fi
 
 # Run the Docker container, mounting the file and passing it to the program
-docker run --rm -it -v "$FILE_PATH:/app/input.bs" script_debugger python /app/python/src/dbg.py -file /app/input.bs
+docker run --rm -it -v "$FILE_PATH:/app/input.bs" script_debugger python3 /app/python/src/dbg.py -file /app/input.bs
 
