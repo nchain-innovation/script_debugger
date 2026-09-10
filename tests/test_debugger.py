@@ -3,17 +3,23 @@
 import unittest
 
 import sys
-sys.path.append("../python/src")
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "python" / "src"))
 
 from debug_interface import DebuggerInterface
-from tx_engine import Stack
+from tx_engine import Script, Stack
 
-EXAMPLE_ADD = "../examples/add.bs"
-EXAMPLE_SWAP = "../examples/swap.bs"
-EXAMPLE_PUSHDATA = "../examples/push_data.bs"
-EXAMPLE_INTEGERS = "../examples/integer_to_script.bs"
-EXAMPLE_LARGE_INTEGERS = "../examples/large_integer_test.bs"
-EXAMPLE_PUSH_DATA_INTEGER_ADD = "../examples/large_data_push_integer_test.bs"
+EXAMPLES = REPO_ROOT / "examples"
+EXAMPLE_ADD = str(EXAMPLES / "add.bs")
+EXAMPLE_SWAP = str(EXAMPLES / "swap.bs")
+EXAMPLE_PUSHDATA = str(EXAMPLES / "push_data.bs")
+EXAMPLE_INTEGERS = str(EXAMPLES / "integer_to_script.bs")
+EXAMPLE_LARGE_INTEGERS = str(EXAMPLES / "large_integer_test.bs")
+EXAMPLE_PUSH_DATA_INTEGER_ADD = str(EXAMPLES / "large_data_push_integer_test.bs")
+EXAMPLE_NESTED_IFS = str(EXAMPLES / "nested_ifs.bs")
+EXAMPLE_SINGLE_OPIF = str(EXAMPLES / "single_opif.bs")
 
 
 class DebuggerTests(unittest.TestCase):
@@ -31,7 +37,7 @@ class DebuggerTests(unittest.TestCase):
         self.assertEqual(self.dbif.db_context.ip, 2)
         self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1], [2]]))
 
-        # Restarts from the begining
+        # Restarts from the beginning
         self.dbif.process_input(["reset"])
         self.dbif.process_input(["run"])
         self.assertEqual(self.dbif.db_context.ip, 2)
@@ -158,7 +164,6 @@ class DebuggerTests(unittest.TestCase):
         self.dbif.process_input(["b", "3"])
         self.dbif.process_input(["b", "4"])
         self.dbif.process_input(["run"])
-        print(f'{self.dbif.db_context.get_stack()}')
         self.assertEqual(self.dbif.db_context.get_stack(), Stack([[0, 160, 114, 78, 24, 9], [0, 160, 114, 78, 24, 9]]))
         self.dbif.process_input(["c"])
         self.assertEqual(self.dbif.db_context.get_stack(), Stack([[0, 64, 229, 156, 48, 18], [0, 64, 229, 156, 48, 18]]))
