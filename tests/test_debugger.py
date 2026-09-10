@@ -115,7 +115,10 @@ class DebuggerTests(unittest.TestCase):
 
         self.dbif.process_input(["run"])
         self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3]]))
-        self.assertEqual(self.dbif.db_context.instruction_count, 0)
+        # A completed run parks the instruction pointer at the end of the
+        # script. It used to be left at 0, which made can_run() claim the
+        # script was still runnable and re-executed it from the top.
+        self.assertEqual(self.dbif.db_context.instruction_count, 3)
 
     def test_file_load_twice(self):
         self.dbif.process_input(["file", EXAMPLE_ADD])
@@ -124,17 +127,16 @@ class DebuggerTests(unittest.TestCase):
         self.dbif.process_input(["run"])
         self.assertIsNotNone(self.dbif.db_context.instruction_count)
         self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3]]))
-        self.assertEqual(self.dbif.db_context.instruction_count, 0)
+        self.assertEqual(self.dbif.db_context.instruction_count, 3)
 
         self.dbif.process_input(["file", EXAMPLE_SWAP])
         self.assertEqual(self.dbif.db_context.instruction_count, 0)
 
         self.dbif.process_input(["run"])
-        self.assertEqual(self.dbif.db_context.instruction_count, 0)
+        self.assertEqual(self.dbif.db_context.instruction_count, 4)
         self.assertEqual(self.dbif.db_context.get_stack(), Stack([[1], [3], [2]]))
 
-        # not sure what this is trying to achieve .. so the script runs to completion
-        # and the restart with the 'step'
+        # Having run to completion, reset and restart with 'step'.
         self.dbif.db_context.reset()
         self.dbif.process_input(["step"])
         self.assertEqual(self.dbif.db_context.instruction_count, 1)
@@ -170,6 +172,99 @@ class DebuggerTests(unittest.TestCase):
         self.dbif.process_input(["c"])
         self.assertEqual(self.dbif.db_context.get_stack(), Stack([]))
 
+
+class RegressionTests(unittest.TestCase):
+    """ One test per defect fixed, so they cannot come back silently.
+    """
+    def setUp(self):
+        self.dbif = DebuggerInterface()
+        self.dbif.set_noisy(False)
+
+    def test_duplicate_breakpoint_is_reported_not_added(self):
+        """ Breakpoints.add returns a bool; the caller tested it against None,
+            so a duplicate was silently reported as added.
+        """
+        self.dbif.process_input(["file", EXAMPLE_SWAP])
+        self.assertTrue(self.dbif.db_context.breakpoints.add(2))
+        self.assertFalse(self.dbif.db_context.breakpoints.add(2))
+        self.assertEqual(self.dbif.db_context.breakpoints.get_all(), [2])
+
+    def test_breakpoint_hit_compares_operation_not_list_index(self):
+        """ Breakpoints.hit() compared the instruction pointer against
+            current_bp_index (a list index) rather than the breakpoint value.
+        """
+        self.dbif.process_input(["file", EXAMPLE_SWAP])
+        self.dbif.process_input(["b", "3"])
+        self.dbif.process_input(["run"])
+        self.assertEqual(self.dbif.db_context.instruction_count, 3)
+        self.assertTrue(self.dbif.db_context.sf.hit_breakpoint())
+
+    def test_breakpoint_on_first_operation_is_honoured(self):
+        """ get_next_breakpoint skipped any breakpoint whose value equalled
+            the current ip, so a breakpoint on operation 0 never fired and the
+            script ran to completion.
+        """
+        self.dbif.process_input(["file", EXAMPLE_SWAP])
+        self.dbif.process_input(["b", "0"])
+        self.dbif.process_input(["run"])
+        self.assertEqual(self.dbif.db_context.instruction_count, 0)
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([]))
+
+    def test_run_to_end_then_step_does_not_re_execute(self):
+        """ run() left instruction_count at 0, so can_run() stayed True and
+            the next step re-ran the script from the top onto the finished
+            stack.
+        """
+        self.dbif.process_input(["file", EXAMPLE_ADD])
+        self.dbif.process_input(["run"])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3]]))
+        self.assertFalse(self.dbif.db_context.can_run())
+        self.dbif.process_input(["s"])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3]]))
+
+    def test_empty_conditional_parses(self):
+        """ The grammar required at least one statement inside OP_IF, so the
+            shipped single_opif.bs example panicked the Rust parser.
+        """
+        self.dbif.process_input(["file", EXAMPLE_SINGLE_OPIF])
+        self.assertTrue(self.dbif.has_script())
+        self.assertEqual(
+            [op for op, _ in self.dbif.db_context.sf.instruction_offset],
+            ["OP_IF", "OP_ENDIF"])
+
+    def test_run_evaluates_conditionals_correctly(self):
+        """ Whole-script evaluation takes the right branches. """
+        self.dbif.process_input(["file", EXAMPLE_NESTED_IFS])
+        self.dbif.process_input(["run"])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3], [4], [5]]))
+
+    @unittest.expectedFailure
+    def test_stepping_through_a_conditional(self):
+        """ KNOWN UNFIXED DEFECT.
+
+            Stepping executes one operation per tx_engine evaluate_core call,
+            bracketed by ip_start/ip_limit. tx_engine's evaluator is stateless
+            across those calls, so a lone OP_IF fails with "ENDIF missing" and
+            no branch state survives to the next step: both arms of the
+            conditional end up executing. Stepping gives
+            Stack([1],[2],[3],[8],[4],[5]) where "run" correctly gives
+            Stack([3],[4],[5]).
+
+            Fixing this needs conditional state carried across steps, either
+            in tx_engine or tracked by the debugger. That is a design change,
+            not a bug fix, so it is recorded here rather than papered over.
+        """
+        self.dbif.process_input(["file", EXAMPLE_NESTED_IFS])
+        while self.dbif.db_context.can_run():
+            self.dbif.process_input(["s"])
+        self.assertEqual(self.dbif.db_context.get_stack(), Stack([[3], [4], [5]]))
+
+    def test_malformed_script_raises_value_error_not_panic(self):
+        from bitcoin_script_parser import parse_script
+        for bad in ("OP_ENDIF", "OP_DUPLICATE", "0xaabbc", "OP_IF OP_1"):
+            with self.subTest(script=bad):
+                with self.assertRaises(ValueError):
+                    parse_script(bad)
 
 if __name__ == "__main__":
     unittest.main()
