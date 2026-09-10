@@ -180,6 +180,32 @@ class RegressionTests(unittest.TestCase):
         self.dbif = DebuggerInterface()
         self.dbif.set_noisy(False)
 
+    def test_wrong_extension_is_rejected(self):
+        """ The extension check used `not in ("bs")`, i.e. a substring test
+            against the string "bs", so "foo.b" was accepted and then crashed.
+        """
+        self.dbif.load_script_file("foo.b")
+        self.assertFalse(self.dbif.has_script())
+
+    def test_missing_file_does_not_crash(self):
+        self.dbif.process_input(["file", str(EXAMPLES / "does_not_exist.bs")])
+        self.assertFalse(self.dbif.has_script())
+
+    def test_bare_info_command(self):
+        """ `info` on its own used to raise IndexError. """
+        self.dbif.process_input(["info"])
+
+    def test_commands_without_a_script(self):
+        for cmd in (["run"], ["s"], ["c"], ["reset"], ["loc"], ["listops"],
+                    ["b", "0"], ["d", "0"], ["info", "break"]):
+            with self.subTest(cmd=cmd):
+                self.dbif.process_input(cmd)
+
+    def test_non_numeric_breakpoint_argument(self):
+        self.dbif.process_input(["file", EXAMPLE_SWAP])
+        self.dbif.process_input(["b", "two"])
+        self.assertEqual(self.dbif.db_context.breakpoints.get_all(), [])
+
     def test_duplicate_breakpoint_is_reported_not_added(self):
         """ Breakpoints.add returns a bool; the caller tested it against None,
             so a duplicate was silently reported as added.
@@ -188,6 +214,18 @@ class RegressionTests(unittest.TestCase):
         self.assertTrue(self.dbif.db_context.breakpoints.add(2))
         self.assertFalse(self.dbif.db_context.breakpoints.add(2))
         self.assertEqual(self.dbif.db_context.breakpoints.get_all(), [2])
+
+    def test_delete_breakpoint_out_of_range(self):
+        """ The bounds check used `>` instead of `>=`, so deleting the index
+            one past the end raised IndexError.
+        """
+        self.dbif.process_input(["file", EXAMPLE_SWAP])
+        self.dbif.process_input(["b", "1"])
+        self.dbif.process_input(["d", "9"])
+        self.dbif.process_input(["d", "-1"])
+        self.assertEqual(self.dbif.db_context.breakpoints.get_all(), [1])
+        self.dbif.process_input(["d", "1"])
+        self.assertEqual(self.dbif.db_context.breakpoints.get_all(), [])
 
     def test_breakpoint_hit_compares_operation_not_list_index(self):
         """ Breakpoints.hit() compared the instruction pointer against
@@ -232,6 +270,38 @@ class RegressionTests(unittest.TestCase):
             [op for op, _ in self.dbif.db_context.sf.instruction_offset],
             ["OP_IF", "OP_ENDIF"])
 
+    def test_nested_ifs_list_is_indented(self):
+        """ format_cmds' indentation branches were unreachable, and two of
+            them appended a literal "' ' * indent + f{op}" string.
+        """
+        self.dbif.process_input(["file", EXAMPLE_NESTED_IFS])
+        from util import format_cmds
+        rendered = format_cmds(
+            Script(self.dbif.db_context.sf.context.cmds).to_debug_parser_string())
+        self.assertNotIn("indent", rendered)
+
+        # Lines are "\t<op number>\t<indent><opcode>".
+        by_number = {}
+        for line in rendered.splitlines():
+            _, number, body = line.split("\t")
+            by_number[number.strip()] = body
+
+        def indent_of(op_number):
+            body = by_number[str(op_number)]
+            return len(body) - len(body.lstrip())
+
+        # OP_1 OP_IF OP_2 OP_IF OP_3 OP_ELSE OP_8 OP_ENDIF OP_4 OP_ENDIF OP_5
+        self.assertEqual(indent_of(0), 0)    # OP_1
+        self.assertEqual(indent_of(1), 0)    # OP_IF
+        self.assertEqual(indent_of(2), 2)    # OP_2, one level in
+        self.assertEqual(indent_of(3), 2)    # nested OP_IF
+        self.assertEqual(indent_of(4), 4)    # OP_3, two levels in
+        self.assertEqual(indent_of(5), 2)    # OP_ELSE, outdented
+        self.assertEqual(indent_of(6), 4)    # OP_8
+        self.assertEqual(indent_of(7), 2)    # inner OP_ENDIF
+        self.assertEqual(indent_of(9), 0)    # outer OP_ENDIF
+        self.assertEqual(indent_of(10), 0)   # OP_5
+
     def test_run_evaluates_conditionals_correctly(self):
         """ Whole-script evaluation takes the right branches. """
         self.dbif.process_input(["file", EXAMPLE_NESTED_IFS])
@@ -265,6 +335,7 @@ class RegressionTests(unittest.TestCase):
             with self.subTest(script=bad):
                 with self.assertRaises(ValueError):
                     parse_script(bad)
+
 
 if __name__ == "__main__":
     unittest.main()

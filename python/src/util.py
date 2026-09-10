@@ -2,23 +2,24 @@
 """
 import os
 import logging
-from typing import List, Union
+from typing import List, Optional, Union
 from tx_engine import Script
 from tx_engine.engine.op_code_names import OP_CODE_NAMES
 
 LOGGER = logging.getLogger(__name__)
 
+# Opcodes that open a block, and so indent everything after them.
+BLOCK_OPEN = ("OP_IF", "OP_NOTIF", "OP_ELSE")
+# Opcodes that close a block, and so are themselves printed outdented.
+BLOCK_CLOSE = ("OP_ELSE", "OP_ENDIF")
+INDENT_WIDTH = 2
+
 
 def has_extension(fname: str, ext: str) -> bool:
-    """ Return true if the file extension matches.
+    """ Return True if the file extension matches `ext` (given without a dot).
     """
-    file_name = fname.split(".")
-    if len(file_name) > 1:
-        if file_name[-1] == ext:
-            return True
-    else:
-        print(f"No file extension provided '{fname}'")
-    return False
+    _, dot, actual = fname.rpartition(".")
+    return bool(dot) and actual == ext
 
 
 def change_directory(env_var: str) -> None:
@@ -30,13 +31,13 @@ def change_directory(env_var: str) -> None:
     except KeyError:
         pass
     else:
-        LOGGER.info(f"change_directory {source_dir}")
+        LOGGER.info("change_directory %s", source_dir)
         os.chdir(source_dir)
 
 
-def cmd_repr(cmd: int) -> Union[str, bytes]:
+def cmd_repr(cmd: Union[int, bytes]) -> Union[str, bytes]:
     """ Return a string (and bytes) representation of the command
-        e.g. 0x5 -> OP_10
+        e.g. 0x5a -> OP_DUP
     """
     if isinstance(cmd, int):
         try:
@@ -47,83 +48,86 @@ def cmd_repr(cmd: int) -> Union[str, bytes]:
         return cmd
 
 
-def print_cmd(i: int, cmd, indent: int = 0) -> int:
-    """ Prints the command and manages the indent
+def print_cmd(i: int, cmd: Union[int, bytes], indent: int = 0) -> int:
+    """ Print the command and return the indent to use for the next one.
     """
-    cmd = cmd_repr(cmd)
-    if isinstance(cmd, str):
-        if cmd in ("OP_ELSE", "OP_ENDIF"):
-            indent -= 2
-        print(f"{i}: {' ' * indent}{cmd}")
-        if cmd in ("OP_IF", "OP_NOTIF", "OP_ELSE"):
-            indent += 2
+    rendered = cmd_repr(cmd)
+    if isinstance(rendered, str):
+        if rendered in BLOCK_CLOSE:
+            indent = max(0, indent - INDENT_WIDTH)
+        print(f"{i}: {' ' * indent}{rendered}")
+        if rendered in BLOCK_OPEN:
+            indent += INDENT_WIDTH
     else:
-        print(f"{i}: {' ' * indent}{int.from_bytes(cmd, byteorder='little')} (0x{cmd.hex()}, {cmd})")
+        print(f"{i}: {' ' * indent}{int.from_bytes(rendered, byteorder='little')} (0x{rendered.hex()}, {rendered!r})")
     return indent
 
 
 def format_cmds(script_str: str) -> str:
-    lines = script_str.split()
-    formatted_script: List = []
-    indent: int = 0
-    op_code_count: int = 0
-    for op in lines:
-        # add op_code number
-        if op in OP_CODE_NAMES.values():
-            formatted_script.append(f'{op_code_count}\t' + f'{op}')
-            op_code_count += 1
-        # deal with indentation
-        elif op in ["OP_IF", "OP_NOTIF"]:
-            f'{op_code_count} {op}'
-            formatted_script.append(f'{op_code_count}\t' + " ' ' * indent + f{op}")
-            op_code_count += 1
-            indent += 2
-        elif op == "OP_ELSE":
-            # decrease before printing, OP_ELSE, increase afterwards
-            indent -= 2
-            formatted_script.append(f'{op_code_count}\t' + f" ' ' * indent + {op}")
-            indent += 2
-            op_code_count += 1
-        elif op == "OP_ENDIF":
-            # decreate indentation befre printing
-            indent -= 2
-            formatted_script.append(f'{op_code_count}\t' + f" ' ' * indent + {op}")
-            op_code_count += 1
-        else:
-            formatted_script.append('\t' + ' ' * indent + op)
+    """ Render a whitespace-separated script as numbered, indented lines.
 
-    return '\n'.join(f'\t{item}' for item in formatted_script)
-
-
-def load_file(filename: str) -> Script:
-    """ Load loaded file, but don't parse it
+        Only opcodes are numbered; data pushes are printed indented under the
+        operation that follows them, matching the numbering the debugger uses
+        for breakpoints.
     """
+    op_code_names = set(OP_CODE_NAMES.values())
+    formatted_script: List[str] = []
+    indent = 0
+    op_code_count = 0
+
+    for token in script_str.split():
+        if token not in op_code_names:
+            # A data push: no operation number, indented under its operation.
+            formatted_script.append(f"\t \t{' ' * (indent + INDENT_WIDTH)}{token}")
+            continue
+        if token in BLOCK_CLOSE:
+            indent = max(0, indent - INDENT_WIDTH)
+        formatted_script.append(f"\t{op_code_count}\t{' ' * indent}{token}")
+        if token in BLOCK_OPEN:
+            indent += INDENT_WIDTH
+        op_code_count += 1
+
+    return "\n".join(formatted_script)
+
+
+def load_file(filename: str) -> Optional[Script]:
+    """ Load and parse a script file.
+
+        Returns None (after printing why) if the file is missing, unreadable,
+        has the wrong extension, or does not parse.
+    """
+    if not has_extension(filename, "bs"):
+        print(f"Not a bitcoin script file (expected a '.bs' extension): '{filename}'")
+        return None
     try:
-        # load it
         with open(filename, "r", encoding="utf-8") as f:
-            # contents = f.readlines()
-            contents = [line.strip() for line in f.readlines()]
-    except FileNotFoundError as e:
+            contents = [line.strip() for line in f]
+    except OSError as e:
         print(e)
-    else:
-        if has_extension(filename, "bs"):
-            return parse_script_new(contents)
+        return None
+
+    try:
+        return parse_script_new(contents)
+    except Exception as e:
+        print(f"Failed to parse '{filename}': {e}")
+        return None
 
 
 def parse_script_new(contents: List[str]) -> Script:
-    """ Parse provided contents
+    """ Parse the provided lines into a single Script.
     """
     script = Script()
-    if contents:
-        # Initialize an empty script or container to hold the full script
-        # Iterate through each line and process it, adding each part to the script
-        for line in contents:
-            tmp_script = Script.parse_string(line)
-            script += tmp_script
+    for line in contents:
+        if not line:
+            continue
+        script += Script.parse_string(line)
     return script
 
 
-def list_full(script: Script) -> None:
-    if script:
-        script_str: str = script.to_debug_parser_string()
-        print(format_cmds(script_str))
+def list_full(script: Optional[Script]) -> None:
+    """ Print the whole script, numbered and indented.
+    """
+    if script is None:
+        print("No script loaded.")
+        return
+    print(format_cmds(script.to_debug_parser_string()))
