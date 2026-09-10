@@ -3,6 +3,8 @@ name = "bitcoin_script_parser"
 version = "0.1.0"
 description = "A library that parses bitcoin script, using a PEG grammar."
 edition = "2021"
+# `usize::is_multiple_of` (used in src/parser.rs) stabilised in 1.87.
+rust-version = "1.87"
 keywords = ["bitcoin", "sv", "PEG"]
 license = "MIT"
 
