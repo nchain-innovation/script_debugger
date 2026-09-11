@@ -1,38 +1,9 @@
 """ This contains the stack frame from which the script operates
 """
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Tuple
 from tx_engine import Context
 from tx_engine.engine.engine_types import Command
 from breakpoints import Breakpoints
-from tx_engine.engine.op_code_names import OP_CODE_NAMES
-
-
-def cmd_repr(cmd: int) -> Union[str, bytes]:
-    """ Return a string (and bytes) representation of the command
-        e.g. 0x5 -> OP_10
-    """
-    if isinstance(cmd, int):
-        try:
-            return OP_CODE_NAMES[cmd]
-        except KeyError:
-            return str(cmd)
-    else:
-        return cmd
-
-
-def print_cmd(i: int, cmd, indent: int = 0) -> int:
-    """ Prints the command and manages the indent
-    """
-    cmd = cmd_repr(cmd)
-    if isinstance(cmd, str):
-        if cmd in ("OP_ELSE", "OP_ENDIF"):
-            indent -= 2
-        print(f"{i}: {' ' * indent}{cmd}")
-        if cmd in ("OP_IF", "OP_NOTIF", "OP_ELSE"):
-            indent += 2
-    else:
-        print(f"{i}: {' ' * indent}{int.from_bytes(cmd, byteorder='little')} (0x{cmd.hex()}, {cmd})")
-    return indent
 
 
 class StackFrame:
@@ -42,12 +13,14 @@ class StackFrame:
         """ Setup StackFrame
         """
         self.name: str = name
-        # self.script_state: ScriptState = ScriptState()
         self.context = Context()
         self.breakpoints: Breakpoints = Breakpoints()
 
-        # instruction_count -> means the number of instructions executed
+        # instruction_count -> the number of instructions executed so far,
+        # which is also the index of the next operation in instruction_offset.
+        # None means the script has not been prepared to run.
         self.instruction_count: Optional[int] = None
+        # (opcode mnemonic, byte offset into the serialised script)
         self.instruction_offset: List[Tuple[str, int]] = []
 
     def __repr__(self) -> str:
@@ -68,11 +41,12 @@ class StackFrame:
         self.context.reset_stacks()
 
     def can_run(self) -> bool:
-        """ Return true if script has not finished
-            To determine finised, the instruction_count is compared with the
-            number of entries in ScriptState.instruction_offset
+        """ Return True if the script has not finished.
+            The instruction_count is compared with the number of entries in
+            instruction_offset.
         """
-        assert isinstance(self.instruction_count, int)
+        if self.instruction_count is None:
+            return False
         return self.instruction_count < len(self.instruction_offset)
 
     def get_cmd(self) -> Command:
@@ -81,24 +55,35 @@ class StackFrame:
         assert isinstance(self.instruction_count, int)
         return self.context.cmds[self.instruction_count]
 
+    def current_opcode(self) -> Optional[str]:
+        """ Return the mnemonic of the operation about to execute, or None if
+            execution has run off the end of the script.
+        """
+        if self.instruction_count is None:
+            return None
+        if not 0 <= self.instruction_count < len(self.instruction_offset):
+            return None
+        return self.instruction_offset[self.instruction_count][0]
+
     def print_cmd(self) -> None:
         """ Print the current command
         """
-        assert isinstance(self.instruction_count, int)
-        print(f"OP Code -> {self.instruction_offset[self.instruction_count][0]}")
+        opcode = self.current_opcode()
+        if opcode is None:
+            print("OP Code -> <end of script>")
+        else:
+            print(f"OP Code -> {opcode}")
 
     def print_breakpoint(self) -> None:
-        """ Print the hit breakpoint
+        """ Print the breakpoint that has just been hit
         """
-        assert isinstance(self.instruction_count, int)
-        print(f'{self.breakpoints.get_all()}')
-        print(f'BP Index -> {self.breakpoints.current_bp_index}')
-        assert (self.instruction_count == self.breakpoints.breakpoints[self.breakpoints.current_bp_index])
-        print(f"Instruction Pointer -> {self.instruction_count} - Hit breakpoint: {self.instruction_offset[self.instruction_count][0]}", end=" ")
-        self.print_cmd()
+        opcode = self.current_opcode()
+        print(f"Instruction Pointer -> {self.instruction_count} - "
+              f"Hit breakpoint {self.breakpoints.current_bp_index}: {opcode}")
 
     def hit_breakpoint(self) -> bool:
-        """ Return true if hit breakpoint
+        """ Return True if execution has stopped on a breakpoint
         """
-        assert isinstance(self.instruction_count, int)
+        if self.instruction_count is None:
+            return False
         return self.breakpoints.hit(self.instruction_count)

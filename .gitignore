@@ -1,0 +1,17 @@
+# Rust
+/target/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Build output
+/dist/
+/wheels/
+*.so
+*.whl

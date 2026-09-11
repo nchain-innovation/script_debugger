@@ -1,8 +1,9 @@
-@startuml debuuger
+@startuml debugger
 title Debugger
 
-class DebugInterface {
-    context: DebuggingContext
+class DebuggerInterface {
+    db_context: DebuggingContext
+    hex_stack: bool
 
     set_noisy(self, boolean: bool)
     print_status(self)
@@ -10,7 +11,7 @@ class DebugInterface {
     has_script(self) -> bool
     run(self)
     reset(self)
-    step(self, stepping: bool)
+    step(self)
     continue_script(self)
     add_breakpoint(self, user_input: List[str])
     list_breakpoints(self)
@@ -22,41 +23,43 @@ class DebugInterface {
 }
 
 class DebuggingContext {
+    noisy: bool
     sf : StackFrame
 
     get_stack(self)
     get_altstack(self)
     breakpoints(self) -> Breakpoints
     ip(self) -> Optional[int]
-    instruction_count(self) -> Optional[int]:
+    instruction_count(self) -> Optional[int]
     step(self) -> bool
     reset(self)
     can_run(self) -> bool
-    run(self, stop_on_fn_end: bool = False)
+    run(self)
     continue_script(self)
     get_number_of_operations(self) -> int
     has_script(self) -> bool
     is_not_runable(self) -> bool
     list(self)
-    list_ops(self) -> None
-    load_script_file(self, fname)
+    list_ops(self)
+    load_script_file(self, fname: str) -> bool
 }
 
 
-DebugInterface -down-* DebuggingContext
+DebuggerInterface -down-* DebuggingContext
 
 class StackFrame {
-    name
+    name: str
     context: Context
     breakpoints: Breakpoints
-    instruction_count: int
-    instruction_offset: List
+    instruction_count: Optional[int]
+    instruction_offset: List[Tuple[str, int]]
 
     __repr__(self) -> str
     reset_core(self)
     reset_stacks(self)
     can_run(self) -> bool
     get_cmd(self) -> Command
+    current_opcode(self) -> Optional[str]
     print_cmd(self)
     print_breakpoint(self)
     hit_breakpoint(self) -> bool
@@ -66,33 +69,40 @@ DebuggingContext -down-* StackFrame
 
 
 class Context {
-    ip_start: int
-    ip_limit: int
-    z: Bytes
+    ip_start: Optional[int]
+    ip_limit: Optional[int]
+    z: Optional[bytes]
     stack: Stack
     alt_stack: Stack
 
-    set_commands(self, cmds: Commands)
+    set_commands(self, script: Script)
     reset_stacks(self)
     evaluate_core(self, quiet: bool = False) -> bool
     evaluate(self, quiet: bool = False) -> bool
     get_stack(self) -> Stack
     get_altstack(self) -> Stack
-    set_ip_start(self, start: int) -> None
-    set_ip_finish(self, limit: int) -> None
+    set_ip_start(self, start: int)
+    set_ip_limit(self, limit: int)
 }
 
+note right of Context
+  From tx_engine. ip_start and ip_limit are
+  byte offsets into the serialised script,
+  not indices into a list of operations.
+end note
+
 class Breakpoints {
-    breakpoints: List
+    breakpoints: List[int]
     current_bp_index: int
 
-    get_all(self) -> List
+    get_all(self) -> List[int]
     add(self, op_number: int) -> bool
-    delete(self, id)
+    delete(self, op_number: int) -> bool
+    current(self) -> Optional[int]
     hit(self, op_number: int) -> bool
     get_current_bp_index(self) -> int
     reset_all(self)
-    get_next_breakpoint(self, ip : int) -> Optional[int]
+    get_next_breakpoint(self, ip: int, inclusive: bool = True) -> Optional[int]
 }
 
 StackFrame -down-* Context
