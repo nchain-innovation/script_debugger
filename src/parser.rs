@@ -253,8 +253,114 @@ mod tests {
             "OP_CHECKSEQUENCEVERIFY",
             "OP_IFDUP",
             "OP_16",
+            // OP_NOP10 is the awkward one: OP_NOP1 is a prefix of it, and
+            // OP_NOP is a prefix of both.
+            "OP_NOP",
+            "OP_NOP9",
+            "OP_NOP10",
         ] {
             assert_eq!(names(op), vec![op.to_string()], "mis-parsed {op}");
+        }
+    }
+
+    /// Every opcode the grammar names must parse to exactly itself.
+    ///
+    /// The list is read out of `script.pest` rather than written here, so an
+    /// opcode added to the grammar is covered the moment it is added and this
+    /// test cannot fall behind.
+    ///
+    /// This is the check that makes shadowing impossible to reintroduce. Both
+    /// of the original grammar bugs were one opcode sitting before a longer
+    /// one it is a prefix of -- `OP_NOP` before `OP_NOP1`, `OP_VER` before
+    /// `OP_VERIF` -- and each was found by hand, one at a time. Ordering is
+    /// still the fix; this is what notices when the ordering is wrong.
+    #[test]
+    fn every_opcode_in_the_grammar_parses_to_exactly_itself() {
+        let grammar = include_str!("script.pest");
+
+        // The opcode literals are written `^"OP_..."`, case-insensitive
+        // strings. Anything else in the file is not an opcode name.
+        let mut names_in_grammar: Vec<&str> = Vec::new();
+        for (index, _) in grammar.match_indices("^\"OP_") {
+            let rest = &grammar[index + 2..];
+            if let Some(end) = rest.find('"') {
+                names_in_grammar.push(&rest[..end]);
+            }
+        }
+        names_in_grammar.sort_unstable();
+        names_in_grammar.dedup();
+
+        assert!(
+            names_in_grammar.len() > 100,
+            "only found {} opcode literals in the grammar; the extraction is \
+             probably broken rather than the grammar being small",
+            names_in_grammar.len()
+        );
+
+        // The four branch tokens are not standalone opcodes: `OP_IF` on its own
+        // is an unterminated `if_statement`, and refusing it is correct. They
+        // are covered as complete constructs in `conditionals` below, and by
+        // the assertion underneath this loop that each really is in the
+        // grammar -- so excluding them here cannot hide one going missing.
+        const BRANCH_TOKENS: [&str; 4] = ["OP_IF", "OP_NOTIF", "OP_ELSE", "OP_ENDIF"];
+
+        let mut shadowed = Vec::new();
+        for op in names_in_grammar
+            .iter()
+            .filter(|o| !BRANCH_TOKENS.contains(o))
+        {
+            match parse_script(op) {
+                Ok(parsed) => {
+                    let got: Vec<&str> = parsed.iter().map(|o| o.opcode.as_str()).collect();
+                    if got != vec![*op] {
+                        shadowed.push(format!("{op} parsed as {got:?}"));
+                    }
+                }
+                Err(_) => shadowed.push(format!("{op} did not parse at all")),
+            }
+        }
+        assert!(
+            shadowed.is_empty(),
+            "{} of {} opcodes do not parse to themselves:\n  {}",
+            shadowed.len(),
+            names_in_grammar.len(),
+            shadowed.join("\n  ")
+        );
+
+        // The exclusion above is only safe while these are genuinely present.
+        for token in BRANCH_TOKENS {
+            assert!(
+                names_in_grammar.contains(&token),
+                "{token} has gone from the grammar and the sweep was skipping it"
+            );
+        }
+    }
+
+    /// OP_NOP4..OP_NOP8 are absent on purpose, not by accident.
+    ///
+    /// Genesis reclaimed those slots in BSV, so they are aliases rather than
+    /// no-ops: OP_NOP4 is OP_SUBSTR, OP_NOP5 is OP_LEFT, OP_NOP6 is OP_RIGHT,
+    /// OP_NOP7 is OP_LSHIFTNUM, OP_NOP8 is OP_RSHIFTNUM. Each is accepted
+    /// under the name it actually does something as; the OP_NOPn spelling is
+    /// rejected so a script cannot be written in one mnemonic and printed back
+    /// in another. Change this deliberately if aliases are wanted.
+    #[test]
+    fn genesis_reclaimed_nop_slots_are_named_for_what_they_do() {
+        for real in [
+            "OP_SUBSTR",
+            "OP_LEFT",
+            "OP_RIGHT",
+            "OP_LSHIFTNUM",
+            "OP_RSHIFTNUM",
+        ] {
+            assert_eq!(names(real), vec![real.to_string()]);
+        }
+        for alias in ["OP_NOP4", "OP_NOP5", "OP_NOP6", "OP_NOP7", "OP_NOP8"] {
+            assert!(
+                parse_script(alias).is_err(),
+                "{alias} is a BSV alias and should be rejected, not silently \
+                 accepted as something else"
+            );
         }
     }
 

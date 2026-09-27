@@ -36,7 +36,20 @@ short_opcode = @{
     | ^"OP_PUSHDATA1" | ^"OP_PUSHDATA2" | ^"OP_PUSHDATA4"
     // Flow control. OP_IF/OP_NOTIF/OP_ELSE/OP_ENDIF are handled by if_statement.
     // OP_VERNOTIF and OP_VERIF must precede OP_VER.
-    | ^"OP_NOP1" | ^"OP_NOP" | ^"OP_VERNOTIF" | ^"OP_VERIF" | ^"OP_VER" | ^"OP_RETURN"
+    //
+    // OP_NOP10 precedes OP_NOP1, which is a prefix of it, and OP_NOP9 precedes
+    // OP_NOP for the same reason.
+    //
+    // OP_NOP4..OP_NOP8 are deliberately absent. Genesis reclaimed those slots
+    // in BSV, so they are aliases rather than no-ops -- src/script/opcodes.h
+    // has OP_NOP4 = OP_SUBSTR (0xb3), OP_NOP5 = OP_LEFT, OP_NOP6 = OP_RIGHT,
+    // OP_NOP7 = OP_LSHIFTNUM, OP_NOP8 = OP_RSHIFTNUM. Every one of those is
+    // already accepted here under the name it actually does something as.
+    // Accepting the OP_NOPn spelling too would mean a script printed back
+    // under a different mnemonic than it was written in, which is its own
+    // confusion; adding them is a decision, not an omission.
+    | ^"OP_NOP10" | ^"OP_NOP1" | ^"OP_NOP9" | ^"OP_NOP"
+    | ^"OP_VERNOTIF" | ^"OP_VERIF" | ^"OP_VER" | ^"OP_RETURN"
     // Stack.
     | ^"OP_TOALTSTACK" | ^"OP_FROMALTSTACK" | ^"OP_DEPTH" | ^"OP_DROP"
     | ^"OP_DUP" | ^"OP_NIP" | ^"OP_OVER" | ^"OP_PICK" | ^"OP_ROLL" | ^"OP_ROT" | ^"OP_SWAP" | ^"OP_TUCK"
